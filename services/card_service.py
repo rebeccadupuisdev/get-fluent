@@ -1,3 +1,7 @@
+import re
+
+from pydantic import ValidationError
+
 from models.card import Card
 from models.tag import Tag
 
@@ -46,12 +50,29 @@ async def get_cards(tag_slug: str | None = None) -> list[Card]:
 
 async def search_cards(query: str) -> list[Card]:
     """Return cards whose phrase matches query (case-insensitive), newest-first."""
-    return await Card.find({"phrase": {"$regex": query, "$options": "i"}}).sort("-created_at").to_list()
+    escaped = re.escape(query)
+    return await Card.find({"phrase": {"$regex": escaped, "$options": "i"}}).sort("-created_at").to_list()
+
+
+async def get_card_counts_by_tag() -> dict[str, int]:
+    """Return a dict mapping each tag_slug to the number of cards assigned to it."""
+    cards = await Card.find_all().to_list()
+    counts: dict[str, int] = {}
+    for card in cards:
+        for slug in card.tag_slugs:
+            counts[slug] = counts.get(slug, 0) + 1
+    return counts
 
 
 async def delete_card(card_id: str) -> str | None:
-    """Delete a card by ID and return its audio_filename (or None if no audio)."""
-    card = await Card.get(card_id)
+    """Delete a card by ID and return its audio_filename (or None if no audio).
+
+    Returns None for both missing cards and malformed IDs.
+    """
+    try:
+        card = await Card.get(card_id)
+    except ValidationError:
+        return None
     if card is None:
         return None
     audio_filename = card.audio_filename

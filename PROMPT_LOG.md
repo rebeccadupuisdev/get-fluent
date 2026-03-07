@@ -37,6 +37,151 @@ Entry template:
 
 ---
 
+### Entry 023 — 2026-03-07
+**Section:** Frontend / Templates
+
+**Persona:** code.frontend.optimize
+
+**Prompt:** Fix all the bugs that doesn't rely on a change to the backend, give me the updated summary after the changes
+
+**What was generated:** Applied four frontend-only fixes from the prior audit: guarded `card_form.html` reset behind `event.detail.successful`; added `hx-disabled-elt` to submit buttons on both the card form and tag modal form; removed the dead edit button stub and the native `hx-confirm` dialog from `card_item.html`; added an explanatory comment to `tag_tree.html` clarifying the dual-purpose `hx-swap-oob` pattern.
+
+**Modifications I made:**
+- Asked to put back the edit button, gonna be implemented next
+
+---
+
+### Entry 022 — 2026-03-07
+**Section:** Frontend / Templates
+
+**Persona:** code.frontend.optimize
+
+**Prompt:** Can you check the code?
+
+**What was generated:** Full frontend audit of all HTMX + Tailwind + Jinja2 templates, identifying 7 issues across correctness, UX, and code quality — including a wrong `hx-target` on the delete-empty-tags button, unconditional form reset on failure, a wired-but-empty edit button, missing `hx-indicator` usage, stale card count, native `confirm()` inconsistency, and an `hx-swap-oob` smell on initial render.
+
+---
+
+### Entry 021 — 2026-03-07
+**Section:** Tests / Services
+
+**Persona:** test.generate
+
+**Prompt:** Based on the audit, apply fixes to the tests
+
+**What was generated:** Added 13 new tests across test_card_service.py, test_tag_service.py, and test_views.py covering regex metacharacter safety, malformed IDs, audio upload, empty tag names, nested tag counts, empty query behaviour, q/tag_slug precedence, and error paths at the view layer. Fixed card_service.search_cards to escape regex input, card_service.delete_card to catch Pydantic ValidationError on malformed IDs, and tag_service.create_tag to reject empty or whitespace-only names.
+
+---
+
+### Entry 020 — 2026-03-07
+**Section:** Tests
+
+**Persona:** test.audit
+
+**Prompt:** Can you check the tests?
+
+**What was generated:** Full audit of all four test files (test_card_service, test_tag_service, test_views, test_audio_service) identifying coverage gaps, brittle assertions, unhandled error paths, and untested route branches — categorised by priority.
+
+---
+
+### Entry 019 — 2026-03-07
+**Section:** Tests
+
+**Persona:** test.generate
+
+**Prompt:** Create tests for not yet tested functions
+
+**What was generated:** Added 30 new tests across four files: `test_tag_service.py` (covering `delete_empty_tags`, `get_valid_parent_tags`, `build_tag_tree` with counts, and `create_tag` error paths for nonexistent/too-deep parents), `test_card_service.py` (covering `get_card_counts_by_tag`), a new `test_audio_service.py` (covering `save_audio` and `delete_audio` with filesystem mocking via `monkeypatch`), and `test_views.py` (covering `DELETE /tags/empty` and the `POST /tags` duplicate-tag error response). All 67 tests pass.
+
+---
+
+### Entry 018 — 2026-03-07
+**Section:** Tags / tag modal form
+
+**Prompt:** When creating a new tag that already exists, show an error message in the modal, currently we have a 422 Unprocessable Entity error response
+
+**What was generated:** Fixed the duplicate-tag error flow by returning HTTP 200 instead of 422 from the error branch in `create_tag`, added `id="tag-error"` to the error div in `tag_modal_form.html`, and updated the `hx-on::after-request` handler to only close the modal when no error element is present in the DOM.
+
+---
+
+### Entry 017 — 2026-03-07
+**Section:** Tags / sidebar filter
+
+**Prompt:** When deleting tags, if a deleted tag was currently selected for filtering, the All cards button should become selected with the main view showing all cards
+
+**What was generated:** Added an `htmx:afterSettle` event listener in `index.html` that checks whether any `.tag-filter-btn` still has the `is-active` class after every HTMX settle. If none do (i.e. the active tag was deleted), it programmatically triggers a click on `#btn-all-cards`, restoring the active highlight and reloading the full card list.
+
+---
+
+### Entry 016 — 2026-03-07
+**Section:** Tags / sidebar
+
+**Prompt:** Add a button under the + New tag in the same style, the text for the button is Delete empty tags and it would delete all tags not attached to a card, ask the user if they are sure before deleting the tags, make the button in the amber colorway
+
+**What was generated:** Added a "Delete empty tags" amber-styled sidebar button that fires `hx-delete="/tags/empty"` with `hx-confirm` for a browser confirmation prompt. Added `delete_empty_tags` to `tag_service.py` and a `DELETE /tags/empty` route to `tag_views.py`. Made `hx-swap-oob` conditional in `tag_tree.html` so the delete endpoint can return a plain `outerHTML`-swappable fragment without OOB conflicts.
+
+**Modifications I made:**
+- Changed the confirmation for a modal in-app
+
+---
+
+### Entry 015 — 2026-03-07
+**Section:** Tags / tag service
+
+**Prompt:** When adding a second level tag we have an 422 Unprocessable Entity error, there's no error when adding a 1st level tag or a root tag
+
+**What was generated:** Fixed the `create_tag` validation in `tag_service.py` — the check `if parent.parent_slug is not None` was incorrectly blocking level-2 tag creation because it fired for level-1 parents (which have a root parent). Now it looks up the grandparent and only raises if the grandparent also has a parent, correctly restricting only depth-3 creation.
+
+---
+
+### Entry 014 — 2026-03-07
+**Section:** Tags / modal form
+
+**Prompt:** The dropdown currently shows all levels of tags, it shouldn't show the level 2 tags
+
+**What was generated:** Fixed the `index` route in `card_views.py` to pass `get_valid_parent_tags()` instead of `get_all_tags()` as the `tags` context variable, so the New Tag modal dropdown excludes level-2 tags that cannot be parents.
+
+---
+
+### Entry 013 — 2026-03-07
+**Section:** Tags / backend validation
+
+**Prompt:** Change the backend to prevent the creation of a 3rd level tag, we only support root -> level 1 -> level 2
+
+**What was generated:** Added depth validation to `create_tag` in `tag_service.py` — raises `ValueError` if the chosen parent already has a parent of its own. Updated `tag_views.py` to catch `ValueError` and return a 422 with the error message in context. Added an inline error banner to `tag_modal_form.html` and filtered the parent dropdown to show only root tags (preventing the invalid selection at the UI level too).
+
+---
+
+### Entry 012 — 2026-03-07
+**Section:** Sidebar / frontend design
+
+**Prompt:** Check the prototype in @prototype/ to replicate the design for the sidebar, but use the mono font for the tags and the serif font for the titles
+
+**What was generated:** Updated `index.html` sidebar to match the prototype's structure — teal icon header, `font-serif` title, `bg-stone-900` sidebar vs `bg-stone-800` main content, updated active state to teal background without border-left, and "New Tag" footer with border-t. Updated `tag_tree.html` to apply `font-mono` to all tag names and count badges, replaced `border-l` child indentation with `pl-8` + `└` connector, and added a `depth` parameter to the macro to differentiate root vs child rendering.
+
+---
+
+### Entry 011 — 2026-03-07
+**Section:** Card item partial / frontend design
+
+**Prompt:** Check this code to replicate the design for the cards @phrase-cards.html, I want to play the audio when we click on the card, show an edit and delete button on hover, use the same fonts for the phrase and the tags
+
+**What was generated:** Redesigned `card_item.html` to match the reference SoundCards design — DM Serif Display for the phrase, DM Mono for tags with an SVG tag icon, teal pill styling, and a "no audio attached" note. Added audio-on-click via a `toggleCardAudio` JS function in `index.html` with `playing` CSS class (teal ring). Edit and delete action buttons now appear on hover, positioned absolutely in the top-right corner. Google Fonts and Tailwind `fontFamily` config added to `base.html`.
+
+---
+
+### Entry 010 — 2026-03-07
+**Section:** Templates (Phase 5)
+
+**Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 5, then update the tests if necessary
+
+**What was generated:** Eight Jinja2 templates implementing the full UI: `base.html` (Tailwind + HTMX CDN, stone-800 background, teal accents), `index.html` (two-column layout with tag sidebar and card main area), and six partials — `card_item.html`, `card_list.html`, `card_form.html`, `tag_tree.html` (recursive macro), `tag_form.html` (OOB-swap pattern for sidebar tree refresh), and `search_bar.html` (debounced HTMX input). All 38 tests passed without changes.
+
+**What I learned:**
+- The agent must have more guidance for the design, I'll experiment with different workflow for this in the future
+
+---
+
 ### Entry 009 — 2026-03-07
 **Section:** Views / Tests
 

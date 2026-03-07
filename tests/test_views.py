@@ -5,6 +5,8 @@ would try to reach a real MongoDB) is never triggered.  The autouse
 beanie_init fixture in conftest.py has already initialised Beanie
 against a mongomock_motor client before each test function runs.
 """
+from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest_asyncio
 
@@ -86,6 +88,47 @@ async def test_delete_nonexistent_card_returns_200(client):
     assert response.status_code == 200
 
 
+async def test_delete_card_malformed_id_returns_200(client):
+    """A non-ObjectId card ID does not raise a 500."""
+    response = await client.delete("/cards/not-a-valid-object-id")
+    assert response.status_code == 200
+
+
+async def test_create_card_with_audio_upload(client):
+    """Audio file upload is saved and the filename is stored on the card."""
+    with patch("services.audio_service.save_audio", new_callable=AsyncMock, return_value="saved.mp3"):
+        response = await client.post(
+            "/cards",
+            data={"phrase": "Bonsoir"},
+            files={"audio": ("clip.mp3", b"fake audio bytes", "audio/mpeg")},
+        )
+
+    assert response.status_code == 200
+    assert "Bonsoir" in response.text
+
+    card = await Card.find_one()
+    assert card is not None
+    assert card.audio_filename == "saved.mp3"
+
+
+async def test_list_cards_q_takes_precedence_over_tag_slug(client):
+    """When both q and tag_slug are supplied, q wins and tag_slug is ignored."""
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})
+    await client.post("/cards", data={"phrase": "Hola"})
+
+    response = await client.get("/cards", params={"q": "hola", "tag_slug": "french"})
+
+    assert response.status_code == 200
+    assert "Hola" in response.text
+    assert "Bonjour" not in response.text
+
+
+async def test_get_tags_empty_returns_200(client):
+    response = await client.get("/tags")
+    assert response.status_code == 200
+
+
 async def test_get_tags_returns_fragment(client):
     await client.post("/tags", data={"name": "Spanish"})
 
@@ -108,3 +151,57 @@ async def test_create_tag_with_parent_returns_fragment(client):
     )
     assert response.status_code == 200
     assert "French" in response.text
+
+
+async def test_create_tag_duplicate_returns_error_message(client):
+    await client.post("/tags", data={"name": "Spanish"})
+
+    response = await client.post("/tags", data={"name": "Spanish"})
+
+    assert response.status_code == 200
+    assert "already exists" in response.text
+
+
+async def test_create_tag_nonexistent_parent_returns_error(client):
+    response = await client.post("/tags", data={"name": "French", "parent_slug": "nonexistent"})
+
+    assert response.status_code == 200
+    assert "does not exist" in response.text
+
+
+async def test_create_tag_too_deep_returns_error(client):
+    await client.post("/tags", data={"name": "Language"})
+    await client.post("/tags", data={"name": "Spanish", "parent_slug": "language"})
+    await client.post("/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"})
+
+    response = await client.post("/tags", data={"name": "CDMX Spanish", "parent_slug": "mexican-spanish"})
+
+    assert response.status_code == 200
+    assert "two levels" in response.text
+
+
+async def test_delete_empty_tags_returns_200(client):
+    await client.post("/tags", data={"name": "Unused"})
+
+    response = await client.delete("/tags/empty")
+
+    assert response.status_code == 200
+
+
+async def test_delete_empty_tags_removes_unused_tag(client):
+    await client.post("/tags", data={"name": "Unused"})
+
+    await client.delete("/tags/empty")
+
+    response = await client.get("/tags")
+    assert "Unused" not in response.text
+
+
+async def test_delete_empty_tags_keeps_used_tag(client):
+    await client.post("/tags", data={"name": "Spanish"})
+    await client.post("/cards", data={"phrase": "Hola", "tag_slugs": "spanish"})
+
+    await client.delete("/tags/empty")
+
+    response = await client.get("/tags")
+    assert "Spanish" in response.text

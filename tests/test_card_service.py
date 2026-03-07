@@ -3,7 +3,13 @@ from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 
 from models.card import Card
-from services.card_service import create_card, delete_card, get_cards, search_cards
+from services.card_service import (
+    create_card,
+    delete_card,
+    get_card_counts_by_tag,
+    get_cards,
+    search_cards,
+)
 from services.tag_service import create_tag
 
 
@@ -105,6 +111,38 @@ async def test_search_cards_no_match():
     assert results == []
 
 
+async def test_search_cards_empty_query_returns_all():
+    """An empty query string matches all cards."""
+    await create_card(phrase="Hola", tag_slugs=[])
+    await create_card(phrase="Bonjour", tag_slugs=[])
+
+    results = await search_cards("")
+
+    assert len(results) == 2
+
+
+async def test_search_cards_regex_special_characters():
+    """Regex metacharacters in the query are treated as literals."""
+    await create_card(phrase="(test)", tag_slugs=[])
+    await create_card(phrase="no match", tag_slugs=[])
+
+    results = await search_cards("(test)")
+
+    assert len(results) == 1
+    assert results[0].phrase == "(test)"
+
+
+async def test_search_cards_dot_does_not_match_any_char():
+    """A literal dot in the query does not act as a regex wildcard."""
+    await create_card(phrase="a.b", tag_slugs=[])
+    await create_card(phrase="axb", tag_slugs=[])
+
+    results = await search_cards("a.b")
+
+    assert len(results) == 1
+    assert results[0].phrase == "a.b"
+
+
 async def test_search_cards_newest_first():
     now = datetime.now(timezone.utc)
     old = Card(phrase="Hola amigo", created_at=now - timedelta(seconds=2), tag_slugs=[])
@@ -135,3 +173,65 @@ async def test_delete_card_not_found_returns_none():
     fake_id = str(ObjectId())
     result = await delete_card(fake_id)
     assert result is None
+
+
+async def test_delete_card_malformed_id_returns_none():
+    """A non-ObjectId string does not raise; service returns None gracefully."""
+    result = await delete_card("not-a-valid-object-id")
+    assert result is None
+
+
+async def test_get_card_counts_by_tag_no_cards():
+    counts = await get_card_counts_by_tag()
+
+    assert counts == {}
+
+
+async def test_get_card_counts_by_tag_no_tags_returns_empty():
+    await create_card(phrase="Hello", tag_slugs=[])
+
+    counts = await get_card_counts_by_tag()
+
+    assert counts == {}
+
+
+async def test_get_card_counts_by_tag_single_card():
+    tag = await create_tag("French")
+    await create_card(phrase="Bonjour", tag_slugs=[tag.slug])
+
+    counts = await get_card_counts_by_tag()
+
+    assert counts["french"] == 1
+
+
+async def test_get_card_counts_by_tag_multiple_cards_same_tag():
+    tag = await create_tag("Spanish")
+    await create_card(phrase="Hola", tag_slugs=[tag.slug])
+    await create_card(phrase="Adios", tag_slugs=[tag.slug])
+
+    counts = await get_card_counts_by_tag()
+
+    assert counts["spanish"] == 2
+
+
+async def test_get_card_counts_by_tag_counts_each_slug_independently():
+    """Ancestor slugs expanded onto a card each contribute to their own count."""
+    parent = await create_tag("Spanish")
+    child = await create_tag("Mexican Spanish", parent_slug=parent.slug)
+    await create_card(phrase="¿Qué tal?", tag_slugs=[child.slug])
+
+    counts = await get_card_counts_by_tag()
+
+    assert counts["mexican-spanish"] == 1
+    assert counts["spanish"] == 1
+
+
+async def test_get_card_counts_by_tag_multiple_tags_on_one_card():
+    tag_a = await create_tag("French")
+    tag_b = await create_tag("Greetings")
+    await create_card(phrase="Bonjour", tag_slugs=[tag_a.slug, tag_b.slug])
+
+    counts = await get_card_counts_by_tag()
+
+    assert counts["french"] == 1
+    assert counts["greetings"] == 1

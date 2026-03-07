@@ -70,28 +70,28 @@ todos:
     status: completed
   - id: tmpl-base
     content: Task 5.1 — base.html with Tailwind + HTMX CDN, layout slots
-    status: pending
+    status: completed
   - id: tmpl-index
     content: "Task 5.2 — index.html (two-column: tag sidebar + card main area)"
-    status: pending
+    status: completed
   - id: tmpl-card-item
     content: Task 5.3 — partials/card_item.html (phrase, tag pills, audio player, delete)
-    status: pending
+    status: completed
   - id: tmpl-card-list
     content: Task 5.4 — partials/card_list.html (HTMX swap target wrapper)
-    status: pending
+    status: completed
   - id: tmpl-card-form
     content: Task 5.5 — partials/card_form.html (phrase, tags, audio upload)
-    status: pending
+    status: completed
   - id: tmpl-tag-tree
     content: Task 5.6 — partials/tag_tree.html (recursive nested tag list with filter links)
-    status: pending
+    status: completed
   - id: tmpl-tag-form
     content: Task 5.7 — partials/tag_form.html (tag name + parent dropdown)
-    status: pending
+    status: completed
   - id: tmpl-search-bar
     content: Task 5.8 — partials/search_bar.html (debounced HTMX search input)
-    status: pending
+    status: completed
   - id: test-conftest
     content: "Task 6.1 — tests/conftest.py: async fixtures with mongomock"
     status: completed

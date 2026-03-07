@@ -12,13 +12,15 @@ router = APIRouter()
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     """Render the main index page with all tags and cards."""
-    tags = await tag_service.get_all_tags()
-    tag_tree = tag_service.build_tag_tree(tags)
+    all_tags = await tag_service.get_all_tags()
+    valid_parent_tags = await tag_service.get_valid_parent_tags()
     cards = await card_service.get_cards()
+    counts = await card_service.get_card_counts_by_tag()
+    tag_tree = tag_service.build_tag_tree(all_tags, counts)
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"tag_tree": tag_tree, "tags": tags, "cards": cards},
+        {"tag_tree": tag_tree, "tags": valid_parent_tags, "cards": cards, "total_cards": len(cards)},
     )
 
 

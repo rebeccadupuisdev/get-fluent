@@ -1,10 +1,304 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>Get Fluent</title></head>
-<body>
-  <div id="tag-tree">{% include "partials/tag_tree.html" %}</div>
-  <main>
-    {% include "partials/card_list.html" %}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden">
+
+  {# ── Sidebar ── #}
+  <aside class="w-72 shrink-0 flex flex-col bg-stone-900 border-r border-stone-700/60 h-full">
+
+    <header class="px-4 py-5 border-b border-stone-700/60">
+      <span class="font-serif text-2xl text-stone-100 tracking-tight">Get <span class="text-teal-400">Fluent</span></span>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-3 space-y-1">
+
+      {# All Cards button #}
+      <button id="btn-all-cards"
+              class="tag-filter-btn is-active w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                     text-left text-stone-400 hover:bg-stone-700/60 hover:text-stone-200 transition-all"
+              onclick="collapseAllAccordions(); setActiveTag(this)"
+              hx-get="/cards"
+              hx-target="#card-list"
+              hx-swap="outerHTML">
+        <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>
+        </svg>
+        <span class="flex-1 font-mono">All Cards</span>
+        <span class="tag-count font-mono text-xs tabular-nums px-1.5 py-0.5 rounded-full bg-stone-700 text-stone-500 shrink-0">{{ total_cards }}</span>
+      </button>
+
+      {# Tags section label #}
+      <div class="pt-3">
+        <p class="text-xs text-stone-600 uppercase tracking-widest px-3 pb-1.5">Tags</p>
+
+        {% include "partials/tag_tree.html" %}
+      </div>
+
+    </div>
+
+    {# Sidebar action buttons — pinned to bottom #}
+    <div class="p-3 border-t border-stone-700/60 space-y-2">
+      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                     text-stone-500 border border-dashed border-stone-700
+                     hover:text-teal-400 hover:border-teal-700/60 hover:bg-teal-600/10 transition-all"
+              onclick="openTagModal()">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span class="font-mono">New tag</span>
+      </button>
+
+      <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                     text-stone-500 border border-dashed border-stone-700
+                     hover:text-amber-400 hover:border-amber-600/60 hover:bg-amber-600/10 transition-all"
+              onclick="openConfirmDeleteModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4 shrink-0">
+          <path fill-rule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5a.75.75 0 0 1 .786-.711Z" clip-rule="evenodd" />
+        </svg>
+        <span class="font-mono">Delete empty tags</span>
+      </button>
+    </div>
+
+  </aside>
+
+  {# ── Main area ── #}
+  <main class="flex-1 overflow-y-auto bg-stone-800">
+    <div class="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-6">
+
+      {% include "partials/search_bar.html" %}
+      {% include "partials/card_form.html" %}
+      {% include "partials/card_list.html" %}
+
+    </div>
   </main>
-</body>
-</html>
+
+</div>
+
+{# ── New Tag Modal ── #}
+<div id="tag-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeTagModal()"></div>
+  <div class="relative bg-stone-900 border border-stone-700/60 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+    {% include "partials/tag_modal_form.html" %}
+  </div>
+</div>
+
+{# ── Confirm Delete Empty Tags Modal ── #}
+<div id="confirm-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeConfirmDeleteModal()"></div>
+  <div class="relative bg-stone-900 border border-stone-700/60 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+
+    <div class="flex items-start justify-between px-7 pt-6 pb-5">
+      <div class="flex items-center gap-3">
+        <span class="text-amber-500 shrink-0">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+          </svg>
+        </span>
+        <h2 class="font-serif text-2xl text-amber-400">Delete empty tags?</h2>
+      </div>
+      <button onclick="closeConfirmDeleteModal()"
+              class="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-500
+                     hover:text-stone-200 flex items-center justify-center transition-colors mt-0.5 shrink-0">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <p class="px-7 pb-6 font-mono text-sm text-stone-400 leading-relaxed">
+      All tags not attached to any card will be permanently removed. This cannot be undone.
+    </p>
+
+    <div class="px-7 py-4 border-t border-stone-700/60 flex items-center justify-end gap-2">
+      <button type="button" onclick="closeConfirmDeleteModal()"
+              class="px-4 py-2 rounded-lg font-mono text-sm bg-stone-800 hover:bg-stone-700
+                     text-stone-400 hover:text-stone-200 transition-colors">
+        Cancel
+      </button>
+      <button type="button"
+              onclick="closeConfirmDeleteModal()"
+              hx-delete="/tags/empty"
+              hx-target="#modal-form-content"
+              hx-swap="outerHTML"
+              class="px-4 py-2 rounded-lg font-mono text-sm bg-amber-700 hover:bg-amber-600
+                     text-white transition-colors">
+        Delete
+      </button>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .tag-filter-btn.is-active {
+    background-color: rgb(20 184 166 / 0.15);
+    color: rgb(45 212 191);
+  }
+  .tag-filter-btn.is-active span {
+    color: rgb(45 212 191);
+  }
+  .tag-filter-btn.is-active .tag-count {
+    background-color: rgb(20 184 166 / 0.25);
+    color: rgb(45 212 191);
+  }
+  .tag-filter-btn.is-active .tag-connector {
+    color: rgb(15 118 110);
+  }
+  /* Override browser autofill background */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px rgb(13 48 44) inset;
+    -webkit-text-fill-color: rgb(204 251 241);
+    caret-color: rgb(204 251 241);
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Animated accordion */
+  .tag-children {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 220ms ease;
+  }
+  .tag-children.is-open {
+    grid-template-rows: 1fr;
+  }
+
+  .card-item.playing {
+    border-color: rgb(20 184 166);
+    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.3);
+  }
+</style>
+<script>
+  function openTagModal() {
+    document.getElementById('tag-modal').classList.remove('hidden');
+    document.querySelector('#tag-modal input[name="name"]')?.focus();
+    document.getElementById('parent-hint')?.classList.add('hidden');
+    const sel = document.getElementById('parent-select');
+    if (sel) sel.value = '';
+  }
+
+  function updateParentHint(select) {
+    const hint = document.getElementById('parent-hint');
+    const name = document.getElementById('parent-hint-name');
+    if (!hint || !name) return;
+    if (select.value) {
+      name.textContent = select.options[select.selectedIndex].text;
+      hint.classList.remove('hidden');
+    } else {
+      hint.classList.add('hidden');
+    }
+  }
+
+  function closeTagModal() {
+    document.getElementById('tag-modal').classList.add('hidden');
+  }
+
+  function openConfirmDeleteModal() {
+    document.getElementById('confirm-delete-modal').classList.remove('hidden');
+  }
+
+  function closeConfirmDeleteModal() {
+    document.getElementById('confirm-delete-modal').classList.add('hidden');
+  }
+
+  function setActiveTag(el) {
+    document.querySelectorAll('.tag-filter-btn').forEach(b => b.classList.remove('is-active'));
+    el.classList.add('is-active');
+  }
+
+  function collapseAllAccordions() {
+    document.querySelectorAll('.tag-children').forEach(c => c.classList.remove('is-open'));
+    document.querySelectorAll('.tag-chevron').forEach(c => {
+      c.classList.add('-rotate-90');
+      c.classList.remove('rotate-0');
+    });
+  }
+
+  function toggleTagItem(btn) {
+    const item = btn.closest('.tag-item');
+    const children = item.querySelector('.tag-children');
+    const chevron = btn.querySelector('.tag-chevron');
+    const isOpen = children.classList.contains('is-open');
+
+    // Accordion: close sibling expandables at the same level (and all their nested children)
+    const parentUl = item.parentElement.parentElement; // .tag-item > li > ul
+    parentUl.querySelectorAll(':scope > li > .tag-item').forEach(other => {
+      if (other !== item) {
+        other.querySelectorAll('.tag-children').forEach(c => c.classList.remove('is-open'));
+        other.querySelectorAll('.tag-chevron').forEach(c => {
+          c.classList.add('-rotate-90');
+          c.classList.remove('rotate-0');
+        });
+      }
+    });
+
+    if (isOpen) {
+      children.classList.remove('is-open');
+      chevron?.classList.add('-rotate-90');
+      chevron?.classList.remove('rotate-0');
+    } else {
+      children.classList.add('is-open');
+      chevron?.classList.remove('-rotate-90');
+      chevron?.classList.add('rotate-0');
+    }
+  }
+
+  // After any HTMX settle, check if the active tag was removed (e.g. by deleting empty tags).
+  // If no filter button is active, fall back to "All Cards".
+  document.addEventListener('htmx:afterSettle', function () {
+    const anyActive = document.querySelector('.tag-filter-btn.is-active');
+    if (!anyActive) {
+      const allCardsBtn = document.getElementById('btn-all-cards');
+      if (allCardsBtn) {
+        htmx.trigger(allCardsBtn, 'click');
+      }
+    }
+  });
+
+  // Close modals on Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeTagModal();
+      closeConfirmDeleteModal();
+    }
+  });
+
+  // ── Audio playback ──────────────────────────────────────
+  let _audioEl = null;
+  let _playingCardId = null;
+
+  function toggleCardAudio(cardId, url) {
+    const card = document.getElementById('card-' + cardId);
+
+    if (_playingCardId === cardId && _audioEl && !_audioEl.paused) {
+      _audioEl.pause();
+      card?.classList.remove('playing');
+      _playingCardId = null;
+      return;
+    }
+
+    if (_audioEl) {
+      _audioEl.pause();
+      _audioEl.src = '';
+    }
+    if (_playingCardId && _playingCardId !== cardId) {
+      document.getElementById('card-' + _playingCardId)?.classList.remove('playing');
+    }
+
+    _audioEl = new Audio(url);
+    _audioEl.play().catch(() => {
+      card?.classList.remove('playing');
+      _playingCardId = null;
+    });
+    card?.classList.add('playing');
+    _playingCardId = cardId;
+    _audioEl.onended = () => {
+      card?.classList.remove('playing');
+      _playingCardId = null;
+    };
+  }
+</script>
+{% endblock %}
