@@ -166,3 +166,4 @@ cython_debug/
 # Project specific
 .ruff_cache/
 /frontend/static/content/
+/prototype
