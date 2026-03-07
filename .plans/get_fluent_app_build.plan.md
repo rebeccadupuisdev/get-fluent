@@ -49,25 +49,25 @@ todos:
     status: completed
   - id: views-card-index
     content: "Task 4.1 — card_views.py: GET / (index page)"
-    status: pending
+    status: completed
   - id: views-card-create
     content: "Task 4.2 — card_views.py: POST /cards"
-    status: pending
+    status: completed
   - id: views-card-list
     content: "Task 4.3 — card_views.py: GET /cards (search + tag filter fragment)"
-    status: pending
+    status: completed
   - id: views-card-delete
     content: "Task 4.4 — card_views.py: DELETE /cards/{card_id}"
-    status: pending
+    status: completed
   - id: views-tag-list
     content: "Task 4.5 — tag_views.py: GET /tags"
-    status: pending
+    status: completed
   - id: views-tag-create
     content: "Task 4.6 — tag_views.py: POST /tags"
-    status: pending
+    status: completed
   - id: views-wire-routers
     content: Task 4.7 — Wire routers into main.py
-    status: pending
+    status: completed
   - id: tmpl-base
     content: Task 5.1 — base.html with Tailwind + HTMX CDN, layout slots
     status: pending
@@ -103,7 +103,7 @@ todos:
     status: completed
   - id: test-views
     content: Task 6.4 — tests/test_views.py smoke tests
-    status: pending
+    status: completed
 ---
 
 # Get Fluent App — Full Build Plan

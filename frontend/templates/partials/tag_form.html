@@ -1,0 +1,18 @@
+<form id="tag-form"
+      hx-post="/tags"
+      hx-target="#tag-form"
+      hx-swap="outerHTML">
+  <input type="text" name="name" placeholder="New tag" required>
+  <select name="parent_slug">
+    <option value="">No parent</option>
+    {% for tag in tags %}
+      <option value="{{ tag.slug }}">{{ tag.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Add Tag</button>
+</form>
+<ul id="tag-tree" hx-swap-oob="true">
+  {% for node in tag_tree %}
+    <li>{{ node.tag.name }}</li>
+  {% endfor %}
+</ul>

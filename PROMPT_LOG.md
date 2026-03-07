@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 009 — 2026-03-07
+**Section:** Views / Tests
+
+**Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 4, then implement the tests from task 6.4
+
+**What was generated:** Implemented all Phase 4 route handlers — `views/card_views.py` (GET `/`, POST `/cards`, GET `/cards`, DELETE `/cards/{card_id}`) and `views/tag_views.py` (GET `/tags`, POST `/tags`) — with a shared `views/deps.py` holding the `Jinja2Templates` instance. Wired both routers into `main.py`. Created minimal Jinja2 template stubs for the five templates needed by the views. Added `tests/test_views.py` with 11 `httpx.AsyncClient` smoke tests covering all routes; all 38 tests across the suite pass.
+
+---
+
 ### Entry 008 — 2026-03-07
 **Section:** Infrastructure / Database
 
