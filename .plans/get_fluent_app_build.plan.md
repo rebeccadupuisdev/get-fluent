@@ -4,19 +4,19 @@ overview: "Build the Get Fluent app from a blank slate: phrase cards with audio,
 todos:
   - id: scaffold-requirements
     content: Task 1.1 — requirements.txt with all dependencies
-    status: pending
+    status: completed
   - id: scaffold-pyproject
     content: Task 1.2 — pyproject.toml with Ruff config
-    status: pending
+    status: completed
   - id: scaffold-pytest
     content: Task 1.3 — pytest.ini
-    status: pending
+    status: completed
   - id: scaffold-dirs
     content: Task 1.4 — Create all empty directories and __init__.py files
-    status: pending
+    status: completed
   - id: scaffold-main
     content: Task 1.5 — main.py skeleton (app, lifespan, static mount, router includes)
-    status: pending
+    status: completed
   - id: model-tag
     content: Task 2.1 — models/tag.py Beanie Tag document
     status: pending

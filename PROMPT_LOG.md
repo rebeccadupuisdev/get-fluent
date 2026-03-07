@@ -15,6 +15,8 @@ counts as significant.
 Entry template:
 
 ```markdown
+---
+
 ### Entry [number] — YYYY-MM-DD
 **Section:** <!-- inferred from context -->
 
@@ -33,6 +35,22 @@ Entry template:
 
 ## Entries
 
+---
+
+### Entry 003 — 2026-03-06
+
+**Section:** Project Scaffold (Phase 1)
+
+**Prompt:** Start @.cursor/plans/get_fluent_app_build.plan.md with Phase 1
+
+**What was generated:** All five Phase 1 tasks completed: `requirements.txt` with all dependencies, `pyproject.toml` with Ruff config (line-length 88, py311, double quotes, space indent), `pytest.ini` (asyncio_mode=auto, testpaths=tests), the full directory skeleton (`models/`, `views/`, `services/`, `tests/`, `frontend/static/content/`, `frontend/templates/partials/`) with `__init__.py` files, and a `main.py` skeleton with lifespan Beanie init, StaticFiles mount, Jinja2Templates, and commented-out router includes.
+
+**Modifications I made:** 
+
+**What I learned:** 
+
+---
+
 ### Entry 002 — 2026-03-06
 
 **Section:** Architecture / Project Planning
@@ -40,6 +58,8 @@ Entry template:
 **Prompt:** Can you change the tags for a flat list without links? When we add a tag to a card, we add all the ancestors as plain string to simplify filtering cards by tag
 
 **What was generated:** Updated the build plan to replace Beanie `link[Tag]` references with a flat string design: `Tag` now has `parent_slug: str | None` instead of a DB link, and `Card` stores `tag_slugs: list[str]` (all ancestor slugs included at creation time). Removed `get_descendant_ids` from the service layer since filtering becomes a simple `$in` query.
+
+---
 
 ### Entry 001 — 2026-03-06
 

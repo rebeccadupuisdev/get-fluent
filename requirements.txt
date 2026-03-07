@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+jinja2
+motor
+beanie
+python-multipart
+aiofiles
+pytest
+pytest-asyncio
+httpx
