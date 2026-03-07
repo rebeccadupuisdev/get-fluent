@@ -6,6 +6,8 @@ motor
 beanie
 python-multipart
 aiofiles
+python-slugify
 pytest
 pytest-asyncio
 httpx
+mongomock-motor

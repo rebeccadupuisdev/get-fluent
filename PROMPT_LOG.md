@@ -37,6 +37,30 @@ Entry template:
 
 ---
 
+### Entry 007 — 2026-03-06
+**Section:** Tests (Phase 6)
+
+**Prompt:** Can you start the @.cursor/plans/get_fluent_app_build.plan.md Phase 6 — Tests with what is already implemented?
+
+**What was generated:** Created `tests/conftest.py` with a `mongomock_motor`-backed async Beanie fixture, `tests/test_tag_service.py` (11 tests covering `create_tag`, `get_all_tags`, and `build_tag_tree`), and `tests/test_card_service.py` (16 tests covering `create_card` ancestor slug expansion, `get_cards`, `search_cards`, and `delete_card`). Added `mongomock-motor` to `requirements.txt`. All 27 tests pass.
+
+**What I learned:**
+- Next time I'll add to my starting prompt to implement relevant tests in each phase
+
+---
+
+### Entry 006 — 2026-03-06
+**Section:** Services (Phase 3)
+
+**Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 3
+
+**What was generated:** Three service modules: `services/tag_service.py` (`_slugify`, `create_tag`, `get_all_tags`, `build_tag_tree`), `services/card_service.py` (`_collect_ancestor_slugs`, `create_card`, `get_cards`, `search_cards`, `delete_card`), and `services/audio_service.py` (`save_audio`, `delete_audio`). All Phase 3 tasks marked complete in the plan file.
+
+**Modifications I made:**
+- Changed the _slugify function to use python-slugify
+
+---
+
 ### Entry 005 — 2026-03-06
 **Section:** Configuration / Project Scaffold
 

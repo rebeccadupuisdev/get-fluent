@@ -19,34 +19,34 @@ todos:
     status: completed
   - id: model-tag
     content: Task 2.1 — models/tag.py Beanie Tag document
-    status: pending
+    status: completed
   - id: model-card
     content: Task 2.2 — models/card.py Beanie Card document
-    status: pending
+    status: completed
   - id: model-init
     content: Task 2.3 — models/__init__.py with DOCUMENT_MODELS export
-    status: pending
+    status: completed
   - id: service-tag-create
     content: "Task 3.1 — tag_service.py: create_tag"
-    status: pending
+    status: completed
   - id: service-tag-read
     content: "Task 3.2 — tag_service.py: get_all_tags, build_tag_tree"
-    status: pending
+    status: completed
   - id: service-card-create
     content: "Task 3.3 — card_service.py: create_card"
-    status: pending
+    status: completed
   - id: service-card-list
     content: "Task 3.4 — card_service.py: get_cards with optional tag filter"
-    status: pending
+    status: completed
   - id: service-card-search
     content: "Task 3.5 — card_service.py: search_cards"
-    status: pending
+    status: completed
   - id: service-card-delete
     content: "Task 3.6 — card_service.py: delete_card"
-    status: pending
+    status: completed
   - id: service-audio
     content: "Task 3.7 — audio_service.py: save_audio, delete_audio"
-    status: pending
+    status: completed
   - id: views-card-index
     content: "Task 4.1 — card_views.py: GET / (index page)"
     status: pending
@@ -94,13 +94,13 @@ todos:
     status: pending
   - id: test-conftest
     content: "Task 6.1 — tests/conftest.py: async fixtures with mongomock"
-    status: pending
+    status: completed
   - id: test-tag-service
     content: Task 6.2 — tests/test_tag_service.py
-    status: pending
+    status: completed
   - id: test-card-service
     content: Task 6.3 — tests/test_card_service.py
-    status: pending
+    status: completed
   - id: test-views
     content: Task 6.4 — tests/test_views.py smoke tests
     status: pending
