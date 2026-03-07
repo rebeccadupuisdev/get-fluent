@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 008 — 2026-03-07
+**Section:** Infrastructure / Database
+
+**Prompt:** Motor is deprecated as of May 2025 in favour of PyMongo's native async API. Should we change something in the project?
+
+**What was generated:** Updated `infrastructure/mongo_setup.py` to replace `motor_asyncio.AsyncIOMotorClient` with PyMongo's `AsyncMongoClient`, and removed `motor` from `requirements.txt`. Beanie 2.0 (released June 2025) already depends on PyMongo's native async API, making Motor a redundant and deprecated dependency.
+
+---
+
 ### Entry 007 — 2026-03-06
 **Section:** Tests (Phase 6)
 
