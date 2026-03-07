@@ -19,7 +19,7 @@ DB_NAME = os.getenv("DB_NAME", "get_fluent")
 async def lifespan(app: FastAPI):
     client = await init_connection(DB_NAME)
     yield
-    client.close()
+    await client.close()
 
 
 app = FastAPI(lifespan=lifespan)
