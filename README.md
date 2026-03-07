@@ -13,6 +13,11 @@ Card app for language learners: create phrase cards and attach audio.
 ```
 /
 ├── main.py                # Application entry point
+├── models/                # Beanie document models
+│   ├── card.py
+│   └── tag.py
+├── infrastructure/        # DB connection setup
+│   └── mongo_setup.py
 ├── views/                 # Web route handlers
 ├── services/              # Business and data logic
 ├── frontend/
@@ -32,7 +37,16 @@ Card app for language learners: create phrase cards and attach audio.
 
 ## Getting Started
 
-Requires Python 3.11+.
+Requires Python 3.11+ and a running MongoDB instance.
+
+1. Create a `.env` file in the project root:
+
+```
+MONGO_URI=mongodb://localhost:27017
+DB_NAME=get_fluent
+```
+
+2. Install dependencies and start the server:
 
 ```bash
 python -m venv .venv

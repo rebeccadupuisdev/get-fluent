@@ -1,21 +1,22 @@
+import os
 from contextlib import asynccontextmanager
 
-import motor.motor_asyncio
-from beanie import init_beanie
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-MONGO_URI = "mongodb://localhost:27017"
-DB_NAME = "get_fluent"
+from infrastructure.mongo_setup import init_connection
+
+DB_NAME = os.getenv("DB_NAME", "get_fluent")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
-    from models import DOCUMENT_MODELS
-
-    await init_beanie(database=client[DB_NAME], document_models=DOCUMENT_MODELS)
+    client = await init_connection(DB_NAME)
     yield
     client.close()
 
