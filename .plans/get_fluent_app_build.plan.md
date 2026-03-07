@@ -182,7 +182,7 @@ Files: `views/card_views.py`, `views/tag_views.py`, `views/__init__.py`
 
 Files in `frontend/templates/`
 
-- **Task 5.1 — `base.html`**: HTML shell with Tailwind CDN, HTMX CDN, `{% block content %}`, `{% block scripts %}`, basic two-column layout slot
+- **Task 5.1 — `base.html`**: HTML shell with Tailwind CDN, HTMX CDN, `{% block content %}`, `{% block scripts %}`, basic two-column layout slot (use --color-stone-800 for the main background and the teal colors for the accents)
 - **Task 5.2 — `index.html`**: extends base; left sidebar (tag tree + tag create form), main area (search bar + card form + card list)
 - **Task 5.3 — `partials/card_item.html`**: single card — phrase text, tag pills (render the card's `tag_slugs` directly — no ancestry traversal needed), `<audio>` player if audio present, delete button (`hx-delete`, `hx-target="closest .card-item"`, `hx-swap="outerHTML"`)
 - **Task 5.4 — `partials/card_list.html`**: `<div id="card-list">` wrapper containing a for-loop of `card_item.html` includes; this is the HTMX swap target for search/filter
