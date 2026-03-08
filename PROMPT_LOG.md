@@ -37,6 +37,146 @@ Entry template:
 
 ---
 
+### Entry 042 — 2026-03-08
+**Section:** tests/
+
+**Persona:** test.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues?
+
+**What was generated:** Fixed conftest (duplicate import, client_no_auth teardown with try/finally). Added tests: PUT phrase-too-long 422, logout, verify (valid/missing/invalid), login page, request-magic-link whitelisted, create_tag/delete_empty_tags 401, CSRF invalid token, delete_empty_tags no tags, phrase 2000 boundary, tag name 100 boundary. New tests/test_auth_security.py for auth.security unit tests. Rate limit test now uses limiter.reset() for isolation.
+
+**What I learned:** 
+- The stepwise modifier didn't work for this persona, tried changing the persona file for next time
+
+---
+
+### Entry 041 — 2026-03-08
+**Section:** models/card.py, models/tag.py, views/card_views.py, views/tag_views.py, frontend/templates/partials
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to input length limits fix)
+
+**What was generated:** `phrase` max_length=2000, tag `name` max_length=100. Added maxlength to form fields. Views catch ValidationError and return 422 or form error. Tests: test_create_card_phrase_too_long_returns_422, test_create_tag_name_too_long_raises (service layer).
+
+---
+
+### Entry 040 — 2026-03-08
+**Section:** infrastructure/mongo_setup.py
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to MONGO_URI not validated fix)
+
+**What was generated:** Validate MONGO_URI at module load; raise clear ValueError if missing or empty. Added rstrip('/') when building conn_str.
+
+---
+
+### Entry 039 — 2026-03-08
+**Section:** auth/limiter.py, auth/views.py, main.py, requirements.txt, tests/test_views.py
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to rate limiting on auth endpoints fix)
+
+**What was generated:** Added slowapi rate limiting: 5/min on request-magic-link, 10/min on verify. Created auth/limiter.py, wired limiter in main.py, added test_request_magic_link_rate_limited.
+
+---
+
+### Entry 038 — 2026-03-08
+**Section:** auth, frontend/templates
+
+**Prompt:** When I request a magic link, I have a 403 Forbidden, is it because of the csrf?
+
+**What was generated:** Confirmed CSRF was the cause. Added hidden `csrf_token` input to the login form in `partials/login.html` (matching the logout form pattern). Fixed `base.html` CSRF script to use `document.addEventListener` instead of `document.body.addEventListener` so the header is attached even when the script runs before the body exists.
+
+---
+
+### Entry 037 — 2026-03-08
+**Section:** auth/email_service.py, README.md
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to magic link logging in dev mode fix)
+
+**What was generated:** Magic links are logged/printed only when `DEBUG=true` or `ENV=development`. Otherwise a generic warning is logged without the link. README updated.
+
+---
+
+### Entry 036 — 2026-03-08
+**Section:** services/audio_service.py, tests/test_audio_service.py
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to unrestricted file upload extension fix)
+
+**What was generated:** `save_audio` now restricts extensions to `.mp3`, `.wav`, `.ogg`, `.m4a`, `.webm`; others use `.bin`. Added `test_save_audio_disallowed_extension_uses_bin_suffix`.
+
+---
+
+### Entry 035 — 2026-03-08
+**Section:** requirements.txt
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to unpinned dependencies and PyJWT CVEs fix)
+
+**What was generated:** Pinned all direct dependencies with exact versions from pip freeze. PyJWT>=2.10.1 for CVE-2024-53861. Added comment recommending `pip-audit` in CI.
+
+---
+
+### Entry 034 — 2026-03-08
+**Section:** services/audio_service.py, tests/test_audio_service.py
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to path traversal in delete_audio fix)
+
+**What was generated:** `delete_audio` now validates that the resolved path stays within AUDIO_DIR via `is_relative_to()`; raises `ValueError` on path traversal. Added `test_delete_audio_rejects_path_traversal`.
+
+---
+
+### Entry 033 — 2026-03-08
+**Section:** auth/views.py, README.md
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to magic link host header spoofing fix)
+
+**What was generated:** Magic links now use `APP_BASE_URL` when set, falling back to `request.base_url` for local dev. README documents `APP_BASE_URL` for production.
+
+---
+
+### Entry 032 — 2026-03-08
+**Section:** middleware/, main.py, frontend/templates, auth/views.py, views/card_views.py, tests
+
+**Persona:** security.generate.stepwise
+
+**Prompt:** Following the audit, can you fix the issues? (yes to CSRF fix)
+
+**What was generated:** CSRF protection via double-submit cookie: `middleware/csrf.py` (token in cookie + request.state, validation on POST/PUT/DELETE/PATCH), `main.py` (add CSRFMiddleware), `base.html` (meta csrf-token + htmx:configRequest to add X-CSRF-Token header), `index.html` (hidden csrf_token in logout form), `with_csrf()` helper in views/deps.py, all relevant views pass csrf_token. Tests updated to establish cookie via GET and send X-CSRF-Token header; added `test_post_without_csrf_token_returns_403`.
+
+---
+
+### Entry 031 — 2026-03-08
+**Section:** frontend/templates, views/card_views.py
+
+**Prompt:** If the user is not logged in, hide the new card buttons, the edit button on a card and the new tag and delete empty tags buttons
+
+**What was generated:** Wrapped New card (header + empty-state), Edit (on card_item), New tag, and Delete empty tags in `{% if user_email %}`. Passed `user_email` from `get_optional_auth` into `list_cards` and into create/update/delete card responses so HTMX-swapped fragments show the correct state.
+
+---
+
+### Entry 030 — 2026-03-08
+**Section:** auth/, views/card_views.py, views/tag_views.py, main.py
+
+**Prompt:** Add the magic link functionality for the create, update and delete functions using an emails whitelist
+
+**What was generated:** Magic link auth with email whitelist: `auth/security.py` (JWT tokens, whitelist check), `auth/email_service.py` (SMTP or console fallback), `auth/views.py` (request magic link, verify, logout), `auth/deps.py` (require_auth dependency). Protected POST/PUT/DELETE on cards and POST/DELETE on tags. Cookie-based sessions; 401 on HTMX requests triggers HX-Redirect to login. Login page at `/auth/login`, Sign in/out in header. Tests override auth; conftest sets AUTH_SECRET and AUTH_EMAIL_WHITELIST.
+
+---
+
 ### Entry 029 — 2026-03-08
 
 **Section:** tests/test_card_service.py, tests/test_views.py

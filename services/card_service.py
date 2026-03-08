@@ -29,6 +29,8 @@ async def create_card(
     audio_filename: str | None = None,
 ) -> Card:
     """Create a card, expanding each tag slug to include all ancestor slugs."""
+    if not phrase or not phrase.strip():
+        raise ValueError("Phrase must not be empty.")
     all_slugs: set[str] = set()
     for slug in tag_slugs:
         ancestors = await _collect_ancestor_slugs(slug)
@@ -91,6 +93,9 @@ async def update_card(
         return None
     if card is None:
         return None
+
+    if not phrase or not phrase.strip():
+        raise ValueError("Phrase must not be empty.")
 
     all_slugs: set[str] = set()
     for slug in tag_slugs:

@@ -17,11 +17,18 @@ from models.card import Card
 
 @pytest_asyncio.fixture
 async def client():
-    """Async HTTP client wired directly to the ASGI app, no lifespan."""
+    """Async HTTP client wired directly to the ASGI app, no lifespan.
+    Establishes CSRF cookie via GET, then adds X-CSRF-Token header for state-changing requests.
+    """
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",
     ) as ac:
+        r = await ac.get("/")
+        r.raise_for_status()
+        csrf_cookie = ac.cookies.get("csrftoken")
+        if csrf_cookie:
+            ac.headers["X-CSRF-Token"] = csrf_cookie
         yield ac
 
 
@@ -39,6 +46,33 @@ async def test_create_card_returns_fragment(client):
 async def test_create_card_without_tags(client):
     response = await client.post("/cards", data={"phrase": "Au revoir"})
     assert response.status_code == 200
+
+
+async def test_create_card_phrase_too_long_returns_422(client):
+    """Phrase exceeding 2000 chars returns 422 (input length limit)."""
+    response = await client.post("/cards", data={"phrase": "x" * 2001})
+    assert response.status_code == 422
+
+
+async def test_create_card_empty_phrase_returns_422(client):
+    """Empty phrase returns 422 (FastAPI Form validation)."""
+    response = await client.post("/cards", data={"phrase": ""})
+
+    assert response.status_code == 422
+
+
+async def test_create_card_whitespace_only_phrase_returns_422(client):
+    """Whitespace-only phrase returns 422 (treated as empty)."""
+    response = await client.post("/cards", data={"phrase": "   "})
+
+    assert response.status_code == 422
+
+
+async def test_create_card_phrase_exactly_2000_chars_succeeds(client):
+    """Phrase at exactly 2000 chars (boundary) is accepted."""
+    response = await client.post("/cards", data={"phrase": "x" * 2000})
+    assert response.status_code == 200
+    assert "x" * 2000 in response.text
 
 
 async def test_list_cards_returns_fragment(client):
@@ -191,6 +225,27 @@ async def test_create_tag_too_deep_returns_error(client):
     assert "two levels" in response.text
 
 
+async def test_create_tag_empty_name_returns_422(client):
+    """Empty tag name returns 422 (FastAPI Form validation)."""
+    response = await client.post("/tags", data={"name": ""})
+
+    assert response.status_code == 422
+
+
+async def test_create_tag_whitespace_only_name_returns_error_message(client):
+    """Whitespace-only tag name returns form with error message."""
+    response = await client.post("/tags", data={"name": "   "})
+
+    assert response.status_code == 200
+    assert "empty" in response.text.lower()
+
+
+async def test_delete_empty_tags_no_tags_returns_200(client):
+    """DELETE /tags/empty with no tags returns 200 (idempotent)."""
+    response = await client.delete("/tags/empty")
+    assert response.status_code == 200
+
+
 async def test_delete_empty_tags_returns_200(client):
     await client.post("/tags", data={"name": "Unused"})
 
@@ -327,3 +382,318 @@ async def test_update_card_malformed_id_returns_200(client):
     response = await client.put("/cards/not-a-valid-id", data={"phrase": "X"})
 
     assert response.status_code == 200
+
+
+async def test_update_card_phrase_too_long_returns_422(client):
+    """Phrase exceeding 2000 chars on update returns 422 (input length limit)."""
+    await client.post("/cards", data={"phrase": "Short"})
+    card = await Card.find_one()
+
+    response = await client.put(f"/cards/{card.id}", data={"phrase": "x" * 2001})
+
+    assert response.status_code == 422
+
+
+async def test_update_card_whitespace_only_phrase_returns_422(client):
+    """Whitespace-only phrase on update returns 422 (treated as empty)."""
+    await client.post("/cards", data={"phrase": "Short"})
+    card = await Card.find_one()
+
+    response = await client.put(f"/cards/{card.id}", data={"phrase": "   "})
+
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Auth — unauthenticated requests to protected routes
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def client_no_auth():
+    """Client without auth override — for testing 401 on protected routes."""
+    from auth.deps import require_auth
+    from main import app
+
+    async def mock_require_auth():
+        return "test@example.com"
+
+    app.dependency_overrides.pop(require_auth, None)
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            r = await ac.get("/")
+            r.raise_for_status()
+            csrf_cookie = ac.cookies.get("csrftoken")
+            if csrf_cookie:
+                ac.headers["X-CSRF-Token"] = csrf_cookie
+            yield ac
+    finally:
+        app.dependency_overrides[require_auth] = mock_require_auth
+
+
+async def test_create_card_unauthorized_returns_401(client_no_auth):
+    """POST /cards without auth returns 401."""
+    response = await client_no_auth.post(
+        "/cards",
+        data={"phrase": "Bonjour"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 401
+    assert response.headers.get("HX-Redirect") == "/auth/login"
+
+
+async def test_create_card_unauthorized_non_htmx_redirects_to_login(client_no_auth):
+    """POST /cards without auth and without HX-Request returns 302 redirect to login."""
+    response = await client_no_auth.post(
+        "/cards",
+        data={"phrase": "Bonjour"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/auth/login"
+
+
+async def test_delete_card_unauthorized_returns_401(client_no_auth):
+    """DELETE /cards/{id} without auth returns 401."""
+    from bson import ObjectId
+
+    response = await client_no_auth.delete(
+        f"/cards/{ObjectId()}",
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 401
+
+
+async def test_create_tag_unauthorized_returns_401(client_no_auth):
+    """POST /tags without auth returns 401."""
+    response = await client_no_auth.post(
+        "/tags",
+        data={"name": "German"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 401
+
+
+async def test_delete_empty_tags_unauthorized_returns_401(client_no_auth):
+    """DELETE /tags/empty without auth returns 401."""
+    response = await client_no_auth.delete(
+        "/tags/empty",
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 401
+
+
+async def test_post_without_csrf_token_returns_403():
+    """POST without X-CSRF-Token header returns 403 (CSRF protection)."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        response = await ac.post("/cards", data={"phrase": "Test"})
+    assert response.status_code == 403
+
+
+async def test_post_with_invalid_csrf_token_returns_403(client):
+    """POST with mismatched X-CSRF-Token returns 403 (CSRF validation)."""
+    client.headers["X-CSRF-Token"] = "wrong-token-value"
+    response = await client.post("/cards", data={"phrase": "Test"})
+    assert response.status_code == 403
+
+
+async def test_post_with_csrf_token_in_form_succeeds():
+    """POST with csrf_token in form body (no header) succeeds when token matches cookie."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        r = await ac.get("/")
+        r.raise_for_status()
+        csrf_cookie = ac.cookies.get("csrftoken")
+        assert csrf_cookie is not None
+
+        response = await ac.post(
+            "/tags",
+            data={"name": "Form CSRF tag", "csrf_token": csrf_cookie},
+        )
+
+    assert response.status_code == 200
+    assert "Form CSRF tag" in response.text
+
+
+async def test_logout_clears_cookie_and_redirects_to_login(client):
+    """POST /auth/logout clears auth cookie and redirects to login page."""
+    response = await client.post("/auth/logout")
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/auth/login"
+    # Starlette delete_cookie sets Set-Cookie with empty value to expire the cookie
+    set_cookie = response.headers.get("set-cookie", "").lower()
+    assert "auth_token" in set_cookie
+
+
+async def test_verify_valid_token_redirects_and_sets_cookie():
+    """GET /auth/verify with valid token redirects to / and sets session cookie."""
+    from auth.security import create_magic_link_token
+
+    token = create_magic_link_token("test@example.com")
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as ac:
+        response = await ac.get(f"/auth/verify?token={token}")
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/"
+    set_cookie = response.headers.get("set-cookie", "").lower()
+    assert "auth_token" in set_cookie
+
+
+async def test_verify_missing_token_redirects_to_login():
+    """GET /auth/verify without token redirects to login."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as ac:
+        response = await ac.get("/auth/verify")
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/auth/login"
+
+
+async def test_login_page_returns_200():
+    """GET /auth/login renders the login form."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        response = await ac.get("/auth/login")
+    assert response.status_code == 200
+    assert "magic link" in response.text.lower() or "sign in" in response.text.lower()
+
+
+async def test_verify_invalid_token_shows_error():
+    """GET /auth/verify with invalid token shows error message."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        response = await ac.get("/auth/verify?token=invalid-token")
+    assert response.status_code == 200
+    assert "expired" in response.text.lower() or "invalid" in response.text.lower()
+
+
+async def test_verify_rate_limited():
+    """GET /auth/verify returns 429 after 10 requests per minute."""
+    from auth.limiter import limiter
+    from auth.security import create_magic_link_token
+
+    limiter.reset()
+    token = create_magic_link_token("test@example.com")
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+    ) as ac:
+        for _ in range(10):
+            resp = await ac.get(f"/auth/verify?token={token}")
+            assert resp.status_code == 302
+        resp = await ac.get(f"/auth/verify?token={token}")
+
+    assert resp.status_code == 429
+
+
+async def test_request_magic_link_whitelisted_returns_sent():
+    """POST /auth/request-magic-link with whitelisted email returns success UI."""
+    with patch("auth.views.send_magic_link_email", return_value=True):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            r = await ac.get("/auth/login")
+            r.raise_for_status()
+            csrf = ac.cookies.get("csrftoken")
+            if csrf:
+                ac.headers["X-CSRF-Token"] = csrf
+            response = await ac.post(
+                "/auth/request-magic-link",
+                data={"email": "test@example.com"},
+            )
+
+    assert response.status_code == 200
+    assert "check your email" in response.text.lower()
+
+
+async def test_request_magic_link_non_whitelisted_returns_same_ui():
+    """Non-whitelisted email returns same success UI — no user enumeration."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        r = await ac.get("/auth/login")
+        r.raise_for_status()
+        csrf = ac.cookies.get("csrftoken")
+        if csrf:
+            ac.headers["X-CSRF-Token"] = csrf
+        response = await ac.post(
+            "/auth/request-magic-link",
+            data={"email": "unknown@example.com"},
+        )
+
+    assert response.status_code == 200
+    assert "check your email" in response.text.lower()
+
+
+async def test_request_magic_link_email_send_failure_shows_error():
+    """When send_magic_link_email returns False, error message is shown."""
+    with patch("auth.views.send_magic_link_email", return_value=False):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            r = await ac.get("/auth/login")
+            r.raise_for_status()
+            csrf = ac.cookies.get("csrftoken")
+            if csrf:
+                ac.headers["X-CSRF-Token"] = csrf
+            response = await ac.post(
+                "/auth/request-magic-link",
+                data={"email": "test@example.com"},
+            )
+
+    assert response.status_code == 200
+    assert "failed to send email" in response.text.lower()
+
+
+async def test_request_magic_link_rate_limited():
+    """POST /auth/request-magic-link returns 429 after 5 requests per minute."""
+    from auth.limiter import limiter
+
+    limiter.reset()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        r = await ac.get("/auth/login")
+        r.raise_for_status()
+        csrf = ac.cookies.get("csrftoken")
+        if csrf:
+            ac.headers["X-CSRF-Token"] = csrf
+        for _ in range(5):
+            resp = await ac.post(
+                "/auth/request-magic-link",
+                data={"email": "test@example.com"},
+            )
+            assert resp.status_code == 200
+        resp = await ac.post(
+            "/auth/request-magic-link",
+            data={"email": "test@example.com"},
+        )
+    assert resp.status_code == 429

@@ -65,6 +65,15 @@ async def test_save_audio_empty_filename_uses_bin_suffix(audio_dir: Path):
     assert filename.endswith(".bin")
 
 
+async def test_save_audio_disallowed_extension_uses_bin_suffix(audio_dir: Path):
+    """Unsupported extensions (e.g. .html, .exe) are replaced with .bin to prevent XSS."""
+    upload = make_upload_file(filename="malicious.html")
+
+    filename = await audio_service.save_audio(upload)
+
+    assert filename.endswith(".bin")
+
+
 async def test_delete_audio_removes_existing_file(audio_dir: Path):
     filepath = audio_dir / "clip.mp3"
     filepath.write_bytes(b"data")
@@ -76,3 +85,9 @@ async def test_delete_audio_removes_existing_file(audio_dir: Path):
 
 async def test_delete_audio_nonexistent_file_does_not_raise(audio_dir: Path):
     await audio_service.delete_audio("ghost.mp3")
+
+
+async def test_delete_audio_rejects_path_traversal(audio_dir: Path):
+    """Path traversal (e.g. ../../../etc/passwd) raises ValueError."""
+    with pytest.raises(ValueError, match="path traversal"):
+        await audio_service.delete_audio("../../../etc/passwd")

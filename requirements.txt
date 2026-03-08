@@ -1,12 +1,15 @@
-fastapi
-uvicorn[standard]
-jinja2
-python-dotenv
-beanie
-python-multipart
-aiofiles
-python-slugify
-pytest
-pytest-asyncio
-httpx
-mongomock-motor
+# Pinned for reproducibility and security. Run `pip-audit` in CI to check for known vulnerabilities.
+fastapi==0.135.1
+uvicorn[standard]==0.41.0
+jinja2==3.1.6
+python-dotenv==1.2.2
+beanie==2.0.1
+python-multipart==0.0.22
+aiofiles==25.1.0
+python-slugify==8.0.4
+PyJWT>=2.10.1  # CVE-2024-53861 fix
+pytest==9.0.2
+pytest-asyncio==1.3.0
+httpx==0.28.1
+mongomock-motor==0.0.36
+slowapi==0.1.9

@@ -1,10 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
+from pydantic import ValidationError
 
+from auth.deps import get_optional_auth, require_auth
 from services import audio_service, card_service, tag_service
-from views.deps import templates
+from views.deps import templates, with_csrf
 
 router = APIRouter()
 
@@ -17,23 +19,27 @@ async def index(request: Request) -> HTMLResponse:
     cards = await card_service.get_cards()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    user_email = get_optional_auth(request)
     return templates.TemplateResponse(
         request,
         "index.html",
-        {
-            "tag_tree": tag_tree,
-            "tags": valid_parent_tags,
-            "cards": cards,
-            "total_cards": len(cards),
-            "q": None,
-            "tag_slug": None,
-        },
+        with_csrf(
+            request,
+            tag_tree=tag_tree,
+            tags=valid_parent_tags,
+            cards=cards,
+            total_cards=len(cards),
+            q=None,
+            tag_slug=None,
+            user_email=user_email,
+        ),
     )
 
 
 @router.post("/cards", response_class=HTMLResponse)
 async def create_card(
     request: Request,
+    _email: Annotated[str, Depends(require_auth)],
     phrase: Annotated[str, Form()],
     tag_slugs: Annotated[list[str], Form()] = [],
     audio: Annotated[UploadFile | None, File()] = None,
@@ -43,11 +49,17 @@ async def create_card(
     if audio and audio.filename:
         audio_filename = await audio_service.save_audio(audio)
 
-    card = await card_service.create_card(
-        phrase=phrase,
-        tag_slugs=tag_slugs,
-        audio_filename=audio_filename,
-    )
+    try:
+        card = await card_service.create_card(
+            phrase=phrase,
+            tag_slugs=tag_slugs,
+            audio_filename=audio_filename,
+        )
+    except ValidationError:
+        raise HTTPException(422, "Phrase too long (max 2000 characters)")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
     cards = await card_service.get_cards()
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
@@ -61,6 +73,7 @@ async def create_card(
             "tag_slug": None,
             "tag_tree": tag_tree,
             "total_cards": len(cards),
+            "user_email": _email,
         },
     )
 
@@ -76,16 +89,18 @@ async def list_cards(
         cards = await card_service.search_cards(q, tag_slug=tag_slug)
     else:
         cards = await card_service.get_cards(tag_slug=tag_slug)
+    user_email = get_optional_auth(request)
     return templates.TemplateResponse(
         request,
         "partials/card_list.html",
-        {"cards": cards, "q": q, "tag_slug": tag_slug},
+        {"cards": cards, "q": q, "tag_slug": tag_slug, "user_email": user_email},
     )
 
 
 @router.put("/cards/{card_id}", response_class=HTMLResponse)
 async def update_card(
     request: Request,
+    _email: Annotated[str, Depends(require_auth)],
     card_id: str,
     phrase: Annotated[str, Form()],
     tag_slugs: Annotated[list[str], Form()] = [],
@@ -108,12 +123,18 @@ async def update_card(
     else:
         audio_filename = current_audio
 
-    await card_service.update_card(
-        card_id=card_id,
-        phrase=phrase,
-        tag_slugs=tag_slugs,
-        audio_filename=audio_filename,
-    )
+    try:
+        await card_service.update_card(
+            card_id=card_id,
+            phrase=phrase,
+            tag_slugs=tag_slugs,
+            audio_filename=audio_filename,
+        )
+    except ValidationError:
+        raise HTTPException(422, "Phrase too long (max 2000 characters)")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
     cards = await card_service.get_cards()
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
@@ -127,12 +148,17 @@ async def update_card(
             "tag_slug": None,
             "tag_tree": tag_tree,
             "total_cards": len(cards),
+            "user_email": _email,
         },
     )
 
 
 @router.delete("/cards/{card_id}", response_class=HTMLResponse)
-async def delete_card(request: Request, card_id: str) -> HTMLResponse:
+async def delete_card(
+    request: Request,
+    _email: Annotated[str, Depends(require_auth)],
+    card_id: str,
+) -> HTMLResponse:
     """Delete a card and its associated audio, then return the updated card list."""
     audio_filename = await card_service.delete_card(card_id)
     if audio_filename:
@@ -150,5 +176,6 @@ async def delete_card(request: Request, card_id: str) -> HTMLResponse:
             "tag_slug": None,
             "tag_tree": tag_tree,
             "total_cards": len(cards),
+            "user_email": _email,
         },
     )

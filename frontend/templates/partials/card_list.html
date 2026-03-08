@@ -22,11 +22,11 @@
     </p>
     <p class="font-mono text-sm mt-1 text-stone-600">
       {% if q %}Try a different search term
-      {% else %}Create your first card to get started
+      {% elif user_email %}Create your first card to get started
       {% endif %}
     </p>
   </div>
-  {% if not q %}
+  {% if not q and user_email %}
   <button onclick="openCardModal()"
           class="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500
                  font-mono text-white text-sm transition-colors mt-2">

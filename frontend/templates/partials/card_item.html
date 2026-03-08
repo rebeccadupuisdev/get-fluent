@@ -10,7 +10,8 @@
      onclick="toggleCardAudio('{{ card.id }}', '/static/content/{{ card.audio_filename }}')"
      {% endif %}>
 
-  {# — Edit button shown on hover — #}
+  {# — Edit button shown on hover (logged-in only) — #}
+  {% if user_email %}
   <div class="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
     <button class="w-[26px] h-[26px] flex items-center justify-center rounded-md
                    border border-stone-600 bg-stone-600/80 text-stone-400
@@ -22,6 +23,7 @@
       </svg>
     </button>
   </div>
+  {% endif %}
 
   {# — Phrase — #}
   <p class="font-serif text-2xl leading-snug text-stone-100 word-break">{{ card.phrase }}</p>

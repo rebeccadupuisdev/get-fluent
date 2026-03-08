@@ -39,6 +39,7 @@
 
     {# Sidebar action buttons — pinned to bottom #}
     <div class="p-3 border-t border-stone-700/60 space-y-2">
+      {% if user_email %}
       <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
                      text-stone-500 border border-dashed border-stone-700
                      hover:text-teal-400 hover:border-teal-700/60 hover:bg-teal-600/10 transition-all"
@@ -58,6 +59,32 @@
         </svg>
         <span class="font-mono">Delete empty tags</span>
       </button>
+      {% endif %}
+
+      {% if user_email %}
+      <form method="post" action="/auth/logout" class="pt-8">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                       text-stone-500 border border-dashed border-stone-700
+                       hover:text-teal-400 hover:border-teal-700/60 hover:bg-teal-600/10 transition-all">
+          <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
+          </svg>
+          <span class="font-mono">Sign out</span>
+        </button>
+      </form>
+      {% else %}
+      <a href="/auth/login"
+          class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
+                text-stone-500 border border-dashed border-stone-700
+                hover:text-teal-400 hover:border-teal-700/60 hover:bg-teal-600/10 transition-all">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+        </svg>
+        <span class="font-mono">Sign in</span>
+      </a>
+      {% endif %}
     </div>
 
   </aside>
@@ -86,6 +113,7 @@
 
         {% include "partials/search_bar.html" %}
 
+        {% if user_email %}
         <button onclick="openCardModal()"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500
                        font-mono text-white text-sm transition-colors shadow-sm shadow-teal-900/30 flex-shrink-0">
@@ -94,6 +122,7 @@
           </svg>
           New card
         </button>
+        {% endif %}
 
       </div>
     </header>
@@ -149,16 +178,6 @@
   .htmx-indicator.htmx-request {
     opacity: 1;
   }
-  /* Override browser autofill background */
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 1000px rgb(13 48 44) inset;
-    -webkit-text-fill-color: rgb(204 251 241);
-    caret-color: rgb(204 251 241);
-    transition: background-color 5000s ease-in-out 0s;
-  }
-
   /* Animated accordion */
   .tag-children {
     display: grid;

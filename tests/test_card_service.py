@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from bson import ObjectId
 
 from models.card import Card
@@ -49,6 +50,18 @@ async def test_create_card_unknown_tag_slug_still_stored():
     """An unrecognised slug is stored as-is — the walk just ends immediately."""
     card = await create_card(phrase="Test", tag_slugs=["unknown-slug"])
     assert "unknown-slug" in card.tag_slugs
+
+
+async def test_create_card_empty_phrase_raises():
+    """Empty or whitespace-only phrase raises ValueError."""
+    with pytest.raises(ValueError, match="must not be empty"):
+        await create_card(phrase="", tag_slugs=[])
+
+
+async def test_create_card_whitespace_only_phrase_raises():
+    """Whitespace-only phrase raises ValueError."""
+    with pytest.raises(ValueError, match="must not be empty"):
+        await create_card(phrase="   ", tag_slugs=[])
 
 
 async def test_get_cards_empty():
@@ -382,3 +395,19 @@ async def test_update_card_malformed_id_returns_none():
     result = await update_card("not-a-valid-id", phrase="X", tag_slugs=[], audio_filename=None)
 
     assert result is None
+
+
+async def test_update_card_empty_phrase_raises():
+    """Update with empty or whitespace-only phrase raises ValueError."""
+    card = await create_card(phrase="Salut", tag_slugs=[])
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        await update_card(str(card.id), phrase="", tag_slugs=[], audio_filename=None)
+
+
+async def test_update_card_whitespace_only_phrase_raises():
+    """Update with whitespace-only phrase raises ValueError."""
+    card = await create_card(phrase="Salut", tag_slugs=[])
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        await update_card(str(card.id), phrase="   ", tag_slugs=[], audio_filename=None)

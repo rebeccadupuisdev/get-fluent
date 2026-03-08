@@ -1,0 +1,57 @@
+{# Magic link login form. Used standalone for /auth/login and as swap target for request flow. #}
+<div class="min-h-screen flex flex-col items-center justify-center p-6 bg-stone-800">
+  <div class="w-full max-w-md">
+    <h1 class="font-serif text-3xl text-stone-100 text-center mb-2">
+      <a href="/" class="text-inherit hover:scale-110 transition-transform inline-block">
+        Get <span class="text-teal-400">Fluent</span>
+      </a>
+    </h1>
+    <p class="font-mono text-sm text-stone-500 text-center mb-8">
+      Sign in with a magic link
+    </p>
+
+    {% if sent %}
+    <div class="rounded-xl bg-teal-950/40 border border-teal-800/50 px-4 py-4 font-mono text-sm text-teal-400 text-center">
+      Check your email. If your address is registered, you’ll receive a sign-in link shortly.
+    </div>
+    <div class="mt-6 text-center">
+      <a href="/auth/login"
+         class="font-mono text-sm text-stone-500 hover:text-teal-400 transition-colors">
+        Request another link
+      </a>
+    </div>
+    {% else %}
+    {% if error %}
+    <div class="rounded-lg bg-amber-950/60 border border-amber-800/50 px-4 py-3 font-mono text-xs text-amber-400 mb-4">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form hx-post="/auth/request-magic-link"
+          hx-target="closest .min-h-screen"
+          hx-swap="outerHTML"
+          class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div>
+        <label for="login-email" class="block font-mono text-xs text-stone-500 uppercase tracking-widest mb-2">
+          Email
+        </label>
+        <input id="login-email"
+               type="email"
+               name="email"
+               required
+               placeholder="you@example.com"
+               class="w-full font-mono text-sm bg-stone-900 border border-stone-700 rounded-lg
+                      px-3 py-2.5 text-stone-100 placeholder-stone-600
+                      focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30
+                      transition-colors">
+      </div>
+      <button type="submit"
+              class="w-full px-4 py-2.5 rounded-lg font-mono bg-teal-600 hover:bg-teal-500
+                     text-white text-sm transition-colors">
+        Send magic link
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>

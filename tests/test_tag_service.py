@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from services.card_service import create_card
 from services.tag_service import (
@@ -43,6 +44,19 @@ async def test_create_tag_empty_name_raises():
 async def test_create_tag_whitespace_only_name_raises():
     with pytest.raises(ValueError, match="empty"):
         await create_tag("   ")
+
+
+async def test_create_tag_name_too_long_raises():
+    """Tag name exceeding 100 chars raises ValidationError."""
+    with pytest.raises(ValidationError):
+        await create_tag("x" * 101)
+
+
+async def test_create_tag_name_exactly_100_chars_succeeds():
+    """Tag name at exactly 100 chars (boundary) is accepted."""
+    tag = await create_tag("x" * 100)
+    assert tag.name == "x" * 100
+    assert len(tag.name) == 100
 
 
 async def test_get_all_tags_empty():

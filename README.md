@@ -44,6 +44,20 @@ Requires Python 3.11+ and a running MongoDB instance.
 ```
 MONGO_URI=mongodb://localhost:27017
 DB_NAME=get_fluent
+
+# Magic link auth (required for create/update/delete)
+AUTH_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
+AUTH_EMAIL_WHITELIST=you@example.com,other@example.com
+
+# Production: base URL for magic links (prevents Host header spoofing)
+# APP_BASE_URL=https://yourapp.com
+
+# Optional: SMTP for sending magic links (if unset, links printed only when DEBUG=true or ENV=development)
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=...
+# SMTP_PASSWORD=...
+# SMTP_FROM=noreply@example.com
 ```
 
 2. Install dependencies and start the server:
