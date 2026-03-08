@@ -52,12 +52,19 @@ AUTH_EMAIL_WHITELIST=you@example.com,other@example.com
 # Production: base URL for magic links (prevents Host header spoofing)
 # APP_BASE_URL=https://yourapp.com
 
-# Optional: SMTP for sending magic links (if unset, links printed only when DEBUG=true or ENV=development)
+# Email for magic links — choose one:
+# Option A: Resend (recommended)
+# RESEND_API_KEY=re_...
+# RESEND_FROM=Get Fluent <noreply@yourdomain.com>   # or onboarding@resend.dev for testing
+
+# Option B: SMTP
 # SMTP_HOST=smtp.example.com
 # SMTP_PORT=587
 # SMTP_USER=...
 # SMTP_PASSWORD=...
 # SMTP_FROM=noreply@example.com
+
+# If neither is set, links are printed to console only when DEBUG=true or ENV=development
 ```
 
 2. Install dependencies and start the server:

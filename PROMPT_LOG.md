@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 045 — 2026-03-08
+**Section:** auth/email_service.py, requirements.txt, README.md
+
+**Prompt:** Can you help me setup the magic link email sending functionality with resend?
+
+**What was generated:** Added Resend as the primary email provider for magic links. When `RESEND_API_KEY` is set, emails are sent via Resend API; otherwise falls back to SMTP or dev console. Added `resend>=2.0.0` to requirements.txt and documented `RESEND_API_KEY` and `RESEND_FROM` in README.
+
+---
+
 ### Entry 044 — 2026-03-08
 **Section:** frontend/templates/partials/tag_tree.html, frontend/static/js/main.js
 
