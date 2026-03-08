@@ -56,7 +56,7 @@ async def list_cards(
 ) -> HTMLResponse:
     """Return the card list HTML fragment, filtered by tag slug or search query."""
     if q:
-        cards = await card_service.search_cards(q)
+        cards = await card_service.search_cards(q, tag_slug=tag_slug)
     else:
         cards = await card_service.get_cards(tag_slug=tag_slug)
     return templates.TemplateResponse(

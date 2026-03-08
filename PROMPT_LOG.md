@@ -37,6 +37,24 @@ Entry template:
 
 ---
 
+### Entry 025 — 2026-03-07
+**Section:** Backend / Services + Views + Frontend — `card_service.py`, `card_views.py`, `index.html`
+
+**Prompt:** Currently the search bar returns every card that fits even if it's not in the selected tag, it would be more intuitive if the search searches only in the selected tag
+
+**What was generated:** Updated `search_cards` to accept an optional `tag_slug` filter; updated the `GET /cards` route to pass `tag_slug` to `search_cards`; added a hidden `<input id="active-tag-slug">` next to the search bar with `hx-include` so HTMX always sends the current tag; updated `setActiveTag` to keep the hidden input in sync when switching tags.
+
+---
+
+### Entry 024 — 2026-03-07
+**Section:** Frontend / Templates — `index.html`
+
+**Prompt:** Check the prototype in @prototype/ to replicate the design layout for the main area header, with the breadcrumb for the selected tag, the search bar and the + New card button, follow the design for the card creation modal, but keep the main area cards design as-is
+
+**What was generated:** Restructured the main area in `index.html` with a sticky top bar (breadcrumb, search bar with icon, New Card button matching the prototype), replaced the inline `card_form.html` with a full-screen card creation modal (phrase textarea, dashed audio upload zone with Replace/Remove actions, hierarchical tag checkboxes with custom teal styling). Added JS for modal open/close, audio selection, tag checkbox visuals, breadcrumb updates on tag filter clicks, and a result count badge.
+
+---
+
 ### Entry 023 — 2026-03-07
 **Section:** Frontend / Templates
 

@@ -48,10 +48,16 @@ async def get_cards(tag_slug: str | None = None) -> list[Card]:
     return await query.sort("-created_at").to_list()
 
 
-async def search_cards(query: str) -> list[Card]:
-    """Return cards whose phrase matches query (case-insensitive), newest-first."""
+async def search_cards(query: str, tag_slug: str | None = None) -> list[Card]:
+    """Return cards whose phrase matches query (case-insensitive), newest-first.
+
+    If tag_slug is provided, results are further restricted to cards assigned to that tag.
+    """
     escaped = re.escape(query)
-    return await Card.find({"phrase": {"$regex": escaped, "$options": "i"}}).sort("-created_at").to_list()
+    filters: dict = {"phrase": {"$regex": escaped, "$options": "i"}}
+    if tag_slug:
+        filters["tag_slugs"] = {"$in": [tag_slug]}
+    return await Card.find(filters).sort("-created_at").to_list()
 
 
 async def get_card_counts_by_tag() -> dict[str, int]:
