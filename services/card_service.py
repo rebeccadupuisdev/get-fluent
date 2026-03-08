@@ -70,6 +70,40 @@ async def get_card_counts_by_tag() -> dict[str, int]:
     return counts
 
 
+async def get_card(card_id: str) -> Card | None:
+    """Get a single card by ID, returning None for missing or invalid IDs."""
+    try:
+        return await Card.get(card_id)
+    except Exception:
+        return None
+
+
+async def update_card(
+    card_id: str,
+    phrase: str,
+    tag_slugs: list[str],
+    audio_filename: str | None,
+) -> Card | None:
+    """Update a card's phrase, tags, and audio. Returns the updated card or None."""
+    try:
+        card = await Card.get(card_id)
+    except ValidationError:
+        return None
+    if card is None:
+        return None
+
+    all_slugs: set[str] = set()
+    for slug in tag_slugs:
+        ancestors = await _collect_ancestor_slugs(slug)
+        all_slugs.update(ancestors)
+
+    card.phrase = phrase
+    card.tag_slugs = list(all_slugs)
+    card.audio_filename = audio_filename
+    await card.save()
+    return card
+
+
 async def delete_card(card_id: str) -> str | None:
     """Delete a card by ID and return its audio_filename (or None if no audio).
 

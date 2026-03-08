@@ -1,52 +1,76 @@
-<form class="flex flex-col gap-4 bg-stone-700 border border-stone-600 rounded-xl px-5 py-4"
-      hx-post="/cards"
-      hx-target="#card-list"
-      hx-swap="afterbegin"
-      hx-encoding="multipart/form-data"
-      hx-on::after-request="if(event.detail.successful){ this.reset(); }"
-      hx-disabled-elt="find button[type='submit']">
+{# New Card modal — form with phrase, audio upload, and tag checkboxes. #}
+{% from "partials/audio_upload.html" import audio_upload_zone, audio_attached_display %}
+{% from "partials/modal_header.html" import modal_header %}
 
-  <h2 class="text-xs font-semibold uppercase tracking-widest text-stone-400">New card</h2>
+<div id="card-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeCardModal()"></div>
+  <div class="relative bg-stone-900 rounded-2xl w-full max-w-lg border border-stone-700/80 shadow-2xl flex flex-col"
+       style="max-height: 90vh">
 
-  <textarea name="phrase"
-            placeholder="Phrase…"
-            rows="2"
-            required
-            class="bg-stone-800 border border-stone-600 rounded-lg px-3 py-2 text-stone-100
-                   placeholder-stone-500 text-sm focus:outline-none focus:border-teal-500
-                   resize-none transition-colors"></textarea>
+    {{ modal_header("New card", "closeCardModal") }}
 
-  {% if tags %}
-  <fieldset class="flex flex-col gap-1.5">
-    <legend class="text-xs text-stone-400 mb-1">Tags</legend>
-    <div class="flex flex-wrap gap-x-4 gap-y-1.5">
-      {% for tag in tags %}
-      <label class="flex items-center gap-1.5 text-sm text-stone-300 cursor-pointer
-                    hover:text-teal-300 transition-colors">
-        <input type="checkbox" name="tag_slugs" value="{{ tag.slug }}"
-               class="accent-teal-500 rounded">
-        {{ tag.name }}
-      </label>
-      {% endfor %}
-    </div>
-  </fieldset>
-  {% endif %}
+    <form id="card-modal-form"
+          class="flex flex-col min-h-0 flex-1"
+          hx-post="/cards"
+          hx-target="#card-list"
+          hx-swap="outerHTML"
+          hx-encoding="multipart/form-data"
+          hx-indicator="#htmx-indicator"
+          hx-disabled-elt="find button[type='submit']"
+          hx-on::after-request="if(event.detail.successful){ closeCardModal(); }">
 
-  <div class="flex flex-col gap-1">
-    <label class="text-xs text-stone-400">Audio <span class="text-stone-600">(optional)</span></label>
-    <input type="file" name="audio" accept="audio/*"
-           class="text-sm text-stone-400
-                  file:mr-3 file:py-1 file:px-3 file:rounded file:border-0
-                  file:bg-stone-600 file:text-stone-200 file:text-xs
-                  hover:file:bg-stone-500 file:transition-colors file:cursor-pointer">
+      <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+        {# Phrase #}
+        <div>
+          <label class="block font-mono text-xs text-stone-500 uppercase tracking-widest mb-2">Phrase</label>
+          <textarea name="phrase"
+                    placeholder="Enter a phrase or sentence…"
+                    rows="3"
+                    required
+                    class="w-full font-mono bg-stone-800 border border-stone-700 rounded-lg px-3 py-2.5
+                           text-stone-100 placeholder-stone-600 resize-none
+                           focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/50
+                           transition-colors text-sm"></textarea>
+        </div>
+
+        {# Audio #}
+        <div>
+          <label class="block font-mono text-xs text-stone-500 uppercase tracking-widest mb-2">
+            Audio <span class="normal-case tracking-normal font-mono text-stone-700">(optional)</span>
+          </label>
+
+          {{ audio_upload_zone("audio-upload-zone", "modal-audio-input") }}
+          {{ audio_attached_display("audio-attached", "audio-filename-display", "modal-audio-input", "removeModalAudio") }}
+
+          <input id="modal-audio-input" type="file" name="audio" accept="audio/*"
+                 class="hidden" onchange="handleModalAudio(this)">
+        </div>
+
+        {# Tags #}
+        <div>
+          <label class="block font-mono text-xs text-stone-500 uppercase tracking-widest mb-2">Tags</label>
+          {% include "partials/card_modal_tags.html" %}
+        </div>
+
+      </div>
+
+      {# Modal footer #}
+      <div class="px-6 py-4 border-t border-stone-700/60 flex items-center justify-end gap-2 flex-shrink-0">
+        <button type="button"
+                onclick="closeCardModal()"
+                class="px-4 py-2 rounded-lg font-mono bg-stone-800 hover:bg-stone-700
+                       text-stone-400 hover:text-stone-200 text-sm transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+                class="px-4 py-2 rounded-lg font-mono bg-teal-600 hover:bg-teal-500
+                       text-white text-sm transition-colors">
+          Create card
+        </button>
+      </div>
+
+    </form>
+
   </div>
-
-  <div class="flex justify-end">
-    <button type="submit"
-            class="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white
-                   text-sm font-medium transition-colors shadow-sm">
-      Add card
-    </button>
-  </div>
-
-</form>
+</div>

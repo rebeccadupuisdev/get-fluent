@@ -5,6 +5,7 @@ would try to reach a real MongoDB) is never triggered.  The autouse
 beanie_init fixture in conftest.py has already initialised Beanie
 against a mongomock_motor client before each test function runs.
 """
+
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -96,7 +97,11 @@ async def test_delete_card_malformed_id_returns_200(client):
 
 async def test_create_card_with_audio_upload(client):
     """Audio file upload is saved and the filename is stored on the card."""
-    with patch("services.audio_service.save_audio", new_callable=AsyncMock, return_value="saved.mp3"):
+    with patch(
+        "services.audio_service.save_audio",
+        new_callable=AsyncMock,
+        return_value="saved.mp3",
+    ):
         response = await client.post(
             "/cards",
             data={"phrase": "Bonsoir"},
@@ -111,17 +116,17 @@ async def test_create_card_with_audio_upload(client):
     assert card.audio_filename == "saved.mp3"
 
 
-async def test_list_cards_q_takes_precedence_over_tag_slug(client):
-    """When both q and tag_slug are supplied, q wins and tag_slug is ignored."""
+async def test_list_cards_q_and_tag_slug_both_apply(client):
+    """When both q and tag_slug are supplied, both filters are applied (AND logic)."""
     await client.post("/tags", data={"name": "French"})
     await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})
-    await client.post("/cards", data={"phrase": "Hola"})
+    await client.post("/cards", data={"phrase": "Buen día", "tag_slugs": "spanish"})
 
-    response = await client.get("/cards", params={"q": "hola", "tag_slug": "french"})
+    response = await client.get("/cards", params={"q": "b", "tag_slug": "french"})
 
     assert response.status_code == 200
-    assert "Hola" in response.text
-    assert "Bonjour" not in response.text
+    assert "Bonjour" in response.text
+    assert "Buen día" not in response.text
 
 
 async def test_get_tags_empty_returns_200(client):
@@ -163,7 +168,9 @@ async def test_create_tag_duplicate_returns_error_message(client):
 
 
 async def test_create_tag_nonexistent_parent_returns_error(client):
-    response = await client.post("/tags", data={"name": "French", "parent_slug": "nonexistent"})
+    response = await client.post(
+        "/tags", data={"name": "French", "parent_slug": "nonexistent"}
+    )
 
     assert response.status_code == 200
     assert "does not exist" in response.text
@@ -172,9 +179,13 @@ async def test_create_tag_nonexistent_parent_returns_error(client):
 async def test_create_tag_too_deep_returns_error(client):
     await client.post("/tags", data={"name": "Language"})
     await client.post("/tags", data={"name": "Spanish", "parent_slug": "language"})
-    await client.post("/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"})
+    await client.post(
+        "/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"}
+    )
 
-    response = await client.post("/tags", data={"name": "CDMX Spanish", "parent_slug": "mexican-spanish"})
+    response = await client.post(
+        "/tags", data={"name": "CDMX Spanish", "parent_slug": "mexican-spanish"}
+    )
 
     assert response.status_code == 200
     assert "two levels" in response.text
@@ -205,3 +216,114 @@ async def test_delete_empty_tags_keeps_used_tag(client):
 
     response = await client.get("/tags")
     assert "Spanish" in response.text
+
+
+# ---------------------------------------------------------------------------
+# PUT /cards/{card_id}
+# ---------------------------------------------------------------------------
+
+
+async def test_update_card_returns_200(client):
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+
+    response = await client.put(f"/cards/{card.id}", data={"phrase": "Allo"})
+
+    assert response.status_code == 200
+
+
+async def test_update_card_phrase_appears_in_response(client):
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+
+    response = await client.put(f"/cards/{card.id}", data={"phrase": "Allo"})
+
+    assert "Allo" in response.text
+
+
+async def test_update_card_persists_new_phrase(client):
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+
+    await client.put(f"/cards/{card.id}", data={"phrase": "Allo"})
+
+    refreshed = await Card.get(card.id)
+    assert refreshed.phrase == "Allo"
+
+
+async def test_update_card_with_tag_slug(client):
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/cards", data={"phrase": "Bonjour"})
+    card = await Card.find_one()
+
+    response = await client.put(
+        f"/cards/{card.id}", data={"phrase": "Bonjour", "tag_slugs": "french"}
+    )
+
+    assert response.status_code == 200
+    refreshed = await Card.get(card.id)
+    assert "french" in refreshed.tag_slugs
+
+
+async def test_update_card_remove_audio(client):
+    with patch(
+        "services.audio_service.save_audio",
+        new_callable=AsyncMock,
+        return_value="clip.mp3",
+    ):
+        with patch("services.audio_service.delete_audio", new_callable=AsyncMock):
+            await client.post(
+                "/cards",
+                data={"phrase": "Test"},
+                files={"audio": ("clip.mp3", b"bytes", "audio/mpeg")},
+            )
+
+    card = await Card.find_one()
+    assert card.audio_filename == "clip.mp3"
+
+    with patch(
+        "services.audio_service.delete_audio", new_callable=AsyncMock
+    ) as mock_del:
+        response = await client.put(
+            f"/cards/{card.id}", data={"phrase": "Test", "remove_audio": "true"}
+        )
+
+    assert response.status_code == 200
+    mock_del.assert_awaited_once_with("clip.mp3")
+    refreshed = await Card.get(card.id)
+    assert refreshed.audio_filename is None
+
+
+async def test_update_card_upload_new_audio(client):
+    await client.post("/cards", data={"phrase": "Test"})
+    card = await Card.find_one()
+
+    with patch(
+        "services.audio_service.save_audio",
+        new_callable=AsyncMock,
+        return_value="new.mp3",
+    ):
+        response = await client.put(
+            f"/cards/{card.id}",
+            data={"phrase": "Test"},
+            files={"audio": ("new.mp3", b"bytes", "audio/mpeg")},
+        )
+
+    assert response.status_code == 200
+    refreshed = await Card.get(card.id)
+    assert refreshed.audio_filename == "new.mp3"
+
+
+async def test_update_card_nonexistent_id_returns_200(client):
+    """Updating a missing card is handled gracefully — still returns the card list fragment."""
+    from bson import ObjectId
+
+    response = await client.put(f"/cards/{ObjectId()}", data={"phrase": "X"})
+
+    assert response.status_code == 200
+
+
+async def test_update_card_malformed_id_returns_200(client):
+    response = await client.put("/cards/not-a-valid-id", data={"phrase": "X"})
+
+    assert response.status_code == 200

@@ -37,7 +37,58 @@ Entry template:
 
 ---
 
+### Entry 029 — 2026-03-08
+
+**Section:** tests/test_card_service.py, tests/test_views.py
+
+**Persona:** test.generate
+
+**Prompt:** Can you create tests for the new/modified code?
+
+**What was generated:** Added 27 new tests covering `get_card`, `update_card` (service), `search_cards` with `tag_slug` filter, and `PUT /cards/{card_id}` view — including happy paths, edge cases (malformed IDs, missing cards), audio handling, and ancestor slug expansion. Also corrected a pre-existing view test whose premise no longer matched the updated `search_cards` behaviour.
+
+**Modifications I made:**
+
+- Fixed one of the tests that wasn't testing the right thing
+
+---
+
+### Entry 028 — 2026-03-08
+
+**Section:** `partials/card_item.html`, `partials/edit_card_modal_tags.html`, `partials/tag_form.html`, `views/card_views.py`, `services/card_service.py`, `frontend/templates/index.html`
+
+**Prompt:** On the phrase cards, remove the delete button, and replicate the prototype edit modal from this folder @prototype for the edit card functionality
+
+**What was generated:** Removed the delete button from card items and replaced the single edit button with a full Edit Card modal modelled on the React prototype. Added `data-phrase`, `data-tags`, and `data-audio` attributes to each card item for client-side pre-population. Created an `edit_card_modal_tags.html` partial (mirroring `card_modal_tags.html`) with its own `id="edit-modal-tags"` so both modals stay in sync via HTMX OOB swaps. Added `get_card` and `update_card` to the card service and a `PUT /cards/{card_id}` endpoint. The modal includes a full inline audio player for existing audio, upload/replace/remove controls for audio management, tag pre-checking on open, and an inline delete confirmation flow in the footer.
+
+---
+
+### Entry 027 — 2026-03-07
+
+**Section:** `views/card_views.py`, `partials/card_list_with_tags.html`
+
+**Prompt:** When we add a new card, the tags count in the sidebar doesn't update
+
+**What was generated:** Created a new `card_list_with_tags.html` partial that includes both `card_list.html` and `tag_tree.html`. Updated `create_card` and `delete_card` endpoints to use this combined partial and pass `tag_tree` context, so the sidebar tag counts update via HTMX's existing `hx-swap-oob` mechanism on `#tag-tree` whenever a card is created or deleted.
+
+**Modifications I made:**
+
+- Asked to change the All cards count too
+
+---
+
+### Entry 026 — 2026-03-07
+
+**Section:** Frontend — `card_list.html`, `card_item.html`, `index.html`, `card_views.py`
+
+**Prompt:** Follow the prototype design for when there's no cards
+
+**What was generated:** Added a centred empty-state to `card_list.html` matching the prototype — a rounded book icon, contextual message ("No cards yet", "No cards in this tag", or "No results for …"), sub-text, and a "New Card" CTA button (hidden during search). Updated `index.html` to make the main area a flex column so the empty state can fill the height. Changed card creation and deletion to return the full `card_list.html` fragment (rather than a single card item) so the empty state toggles correctly. Passed `q` and `tag_slug` context from all relevant view endpoints.
+
+---
+
 ### Entry 025 — 2026-03-07
+
 **Section:** Backend / Services + Views + Frontend — `card_service.py`, `card_views.py`, `index.html`
 
 **Prompt:** Currently the search bar returns every card that fits even if it's not in the selected tag, it would be more intuitive if the search searches only in the selected tag
@@ -47,6 +98,7 @@ Entry template:
 ---
 
 ### Entry 024 — 2026-03-07
+
 **Section:** Frontend / Templates — `index.html`
 
 **Prompt:** Check the prototype in @prototype/ to replicate the design layout for the main area header, with the breadcrumb for the selected tag, the search bar and the + New card button, follow the design for the card creation modal, but keep the main area cards design as-is
@@ -56,6 +108,7 @@ Entry template:
 ---
 
 ### Entry 023 — 2026-03-07
+
 **Section:** Frontend / Templates
 
 **Persona:** code.frontend.optimize
@@ -65,11 +118,13 @@ Entry template:
 **What was generated:** Applied four frontend-only fixes from the prior audit: guarded `card_form.html` reset behind `event.detail.successful`; added `hx-disabled-elt` to submit buttons on both the card form and tag modal form; removed the dead edit button stub and the native `hx-confirm` dialog from `card_item.html`; added an explanatory comment to `tag_tree.html` clarifying the dual-purpose `hx-swap-oob` pattern.
 
 **Modifications I made:**
+
 - Asked to put back the edit button, gonna be implemented next
 
 ---
 
 ### Entry 022 — 2026-03-07
+
 **Section:** Frontend / Templates
 
 **Persona:** code.frontend.optimize
@@ -81,6 +136,7 @@ Entry template:
 ---
 
 ### Entry 021 — 2026-03-07
+
 **Section:** Tests / Services
 
 **Persona:** test.generate
@@ -92,6 +148,7 @@ Entry template:
 ---
 
 ### Entry 020 — 2026-03-07
+
 **Section:** Tests
 
 **Persona:** test.audit
@@ -103,6 +160,7 @@ Entry template:
 ---
 
 ### Entry 019 — 2026-03-07
+
 **Section:** Tests
 
 **Persona:** test.generate
@@ -114,6 +172,7 @@ Entry template:
 ---
 
 ### Entry 018 — 2026-03-07
+
 **Section:** Tags / tag modal form
 
 **Prompt:** When creating a new tag that already exists, show an error message in the modal, currently we have a 422 Unprocessable Entity error response
@@ -123,6 +182,7 @@ Entry template:
 ---
 
 ### Entry 017 — 2026-03-07
+
 **Section:** Tags / sidebar filter
 
 **Prompt:** When deleting tags, if a deleted tag was currently selected for filtering, the All cards button should become selected with the main view showing all cards
@@ -132,6 +192,7 @@ Entry template:
 ---
 
 ### Entry 016 — 2026-03-07
+
 **Section:** Tags / sidebar
 
 **Prompt:** Add a button under the + New tag in the same style, the text for the button is Delete empty tags and it would delete all tags not attached to a card, ask the user if they are sure before deleting the tags, make the button in the amber colorway
@@ -139,11 +200,13 @@ Entry template:
 **What was generated:** Added a "Delete empty tags" amber-styled sidebar button that fires `hx-delete="/tags/empty"` with `hx-confirm` for a browser confirmation prompt. Added `delete_empty_tags` to `tag_service.py` and a `DELETE /tags/empty` route to `tag_views.py`. Made `hx-swap-oob` conditional in `tag_tree.html` so the delete endpoint can return a plain `outerHTML`-swappable fragment without OOB conflicts.
 
 **Modifications I made:**
+
 - Changed the confirmation for a modal in-app
 
 ---
 
 ### Entry 015 — 2026-03-07
+
 **Section:** Tags / tag service
 
 **Prompt:** When adding a second level tag we have an 422 Unprocessable Entity error, there's no error when adding a 1st level tag or a root tag
@@ -153,6 +216,7 @@ Entry template:
 ---
 
 ### Entry 014 — 2026-03-07
+
 **Section:** Tags / modal form
 
 **Prompt:** The dropdown currently shows all levels of tags, it shouldn't show the level 2 tags
@@ -162,6 +226,7 @@ Entry template:
 ---
 
 ### Entry 013 — 2026-03-07
+
 **Section:** Tags / backend validation
 
 **Prompt:** Change the backend to prevent the creation of a 3rd level tag, we only support root -> level 1 -> level 2
@@ -171,6 +236,7 @@ Entry template:
 ---
 
 ### Entry 012 — 2026-03-07
+
 **Section:** Sidebar / frontend design
 
 **Prompt:** Check the prototype in @prototype/ to replicate the design for the sidebar, but use the mono font for the tags and the serif font for the titles
@@ -180,6 +246,7 @@ Entry template:
 ---
 
 ### Entry 011 — 2026-03-07
+
 **Section:** Card item partial / frontend design
 
 **Prompt:** Check this code to replicate the design for the cards @phrase-cards.html, I want to play the audio when we click on the card, show an edit and delete button on hover, use the same fonts for the phrase and the tags
@@ -189,6 +256,7 @@ Entry template:
 ---
 
 ### Entry 010 — 2026-03-07
+
 **Section:** Templates (Phase 5)
 
 **Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 5, then update the tests if necessary
@@ -196,11 +264,13 @@ Entry template:
 **What was generated:** Eight Jinja2 templates implementing the full UI: `base.html` (Tailwind + HTMX CDN, stone-800 background, teal accents), `index.html` (two-column layout with tag sidebar and card main area), and six partials — `card_item.html`, `card_list.html`, `card_form.html`, `tag_tree.html` (recursive macro), `tag_form.html` (OOB-swap pattern for sidebar tree refresh), and `search_bar.html` (debounced HTMX input). All 38 tests passed without changes.
 
 **What I learned:**
+
 - The agent must have more guidance for the design, I'll experiment with different workflow for this in the future
 
 ---
 
 ### Entry 009 — 2026-03-07
+
 **Section:** Views / Tests
 
 **Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 4, then implement the tests from task 6.4
@@ -210,6 +280,7 @@ Entry template:
 ---
 
 ### Entry 008 — 2026-03-07
+
 **Section:** Infrastructure / Database
 
 **Prompt:** Motor is deprecated as of May 2025 in favour of PyMongo's native async API. Should we change something in the project?
@@ -219,6 +290,7 @@ Entry template:
 ---
 
 ### Entry 007 — 2026-03-06
+
 **Section:** Tests (Phase 6)
 
 **Prompt:** Can you start the @.cursor/plans/get_fluent_app_build.plan.md Phase 6 — Tests with what is already implemented?
@@ -226,11 +298,13 @@ Entry template:
 **What was generated:** Created `tests/conftest.py` with a `mongomock_motor`-backed async Beanie fixture, `tests/test_tag_service.py` (11 tests covering `create_tag`, `get_all_tags`, and `build_tag_tree`), and `tests/test_card_service.py` (16 tests covering `create_card` ancestor slug expansion, `get_cards`, `search_cards`, and `delete_card`). Added `mongomock-motor` to `requirements.txt`. All 27 tests pass.
 
 **What I learned:**
+
 - Next time I'll add to my starting prompt to implement relevant tests in each phase
 
 ---
 
 ### Entry 006 — 2026-03-06
+
 **Section:** Services (Phase 3)
 
 **Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 3
@@ -238,11 +312,13 @@ Entry template:
 **What was generated:** Three service modules: `services/tag_service.py` (`_slugify`, `create_tag`, `get_all_tags`, `build_tag_tree`), `services/card_service.py` (`_collect_ancestor_slugs`, `create_card`, `get_cards`, `search_cards`, `delete_card`), and `services/audio_service.py` (`save_audio`, `delete_audio`). All Phase 3 tasks marked complete in the plan file.
 
 **Modifications I made:**
+
 - Changed the _slugify function to use python-slugify
 
 ---
 
 ### Entry 005 — 2026-03-06
+
 **Section:** Configuration / Project Scaffold
 
 **Prompt:** Can you put these main.py (9-10) in a .env file?
@@ -250,11 +326,13 @@ Entry template:
 **What was generated:** Created `.env` with `MONGO_URI` and `DB_NAME` values, added `python-dotenv` to `requirements.txt`, and updated `main.py` to call `load_dotenv()` and read both values via `os.getenv` with fallback defaults.
 
 **What I learned:**
+
 - I should add using .env as a preference
 
 ---
 
 ### Entry 004 — 2026-03-06
+
 **Section:** Data Models (Phase 2)
 
 **Prompt:** Continue @.cursor/plans/get_fluent_app_build.plan.md with Phase 2
@@ -262,6 +340,7 @@ Entry template:
 **What was generated:** Three model files: `models/tag.py` (Beanie `Tag` document with `name`, `slug`, `parent_slug: str | None`), `models/card.py` (Beanie `Card` document with `phrase`, `audio_filename`, `created_at` via `Field(default_factory=...)`, `tag_slugs: list[str]`), and `models/__init__.py` exporting both documents and `DOCUMENT_MODELS` for Beanie init.
 
 **Modifications I made:**
+
 - Added infrastructure folder and moved the DB connection logic
 
 ---

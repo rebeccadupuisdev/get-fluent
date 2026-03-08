@@ -6,9 +6,11 @@ from models.card import Card
 from services.card_service import (
     create_card,
     delete_card,
+    get_card,
     get_card_counts_by_tag,
     get_cards,
     search_cards,
+    update_card,
 )
 from services.tag_service import create_tag
 
@@ -235,3 +237,148 @@ async def test_get_card_counts_by_tag_multiple_tags_on_one_card():
 
     assert counts["french"] == 1
     assert counts["greetings"] == 1
+
+
+# ---------------------------------------------------------------------------
+# search_cards — tag_slug filter
+# ---------------------------------------------------------------------------
+
+
+async def test_search_cards_with_tag_slug_returns_only_matching_tag():
+    tag = await create_tag("French")
+    await create_card(phrase="Bonjour", tag_slugs=[tag.slug])
+    await create_card(phrase="Bonsoir", tag_slugs=[])
+
+    results = await search_cards("bon", tag_slug="french")
+
+    assert len(results) == 1
+    assert results[0].phrase == "Bonjour"
+
+
+async def test_search_cards_with_tag_slug_no_match_returns_empty():
+    tag = await create_tag("Spanish")
+    await create_card(phrase="Hola", tag_slugs=[tag.slug])
+
+    results = await search_cards("hola", tag_slug="french")
+
+    assert results == []
+
+
+async def test_search_cards_with_tag_slug_newest_first():
+    now = datetime.now(timezone.utc)
+    tag = await create_tag("French")
+    old = Card(phrase="Bonjour", created_at=now - timedelta(seconds=2), tag_slugs=["french"])
+    new = Card(phrase="Bonsoir", created_at=now, tag_slugs=["french"])
+    await old.insert()
+    await new.insert()
+
+    results = await search_cards("bon", tag_slug="french")
+
+    assert results[0].phrase == "Bonsoir"
+    assert results[1].phrase == "Bonjour"
+
+
+# ---------------------------------------------------------------------------
+# get_card
+# ---------------------------------------------------------------------------
+
+
+async def test_get_card_returns_card():
+    card = await create_card(phrase="Merci", tag_slugs=[])
+
+    result = await get_card(str(card.id))
+
+    assert result is not None
+    assert result.phrase == "Merci"
+
+
+async def test_get_card_not_found_returns_none():
+    from bson import ObjectId
+
+    result = await get_card(str(ObjectId()))
+
+    assert result is None
+
+
+async def test_get_card_malformed_id_returns_none():
+    result = await get_card("not-a-valid-id")
+
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# update_card
+# ---------------------------------------------------------------------------
+
+
+async def test_update_card_changes_phrase():
+    card = await create_card(phrase="Salut", tag_slugs=[])
+
+    updated = await update_card(str(card.id), phrase="Allo", tag_slugs=[], audio_filename=None)
+
+    assert updated is not None
+    assert updated.phrase == "Allo"
+
+
+async def test_update_card_persists_to_db():
+    card = await create_card(phrase="Salut", tag_slugs=[])
+
+    await update_card(str(card.id), phrase="Allo", tag_slugs=[], audio_filename=None)
+
+    refreshed = await Card.get(card.id)
+    assert refreshed is not None
+    assert refreshed.phrase == "Allo"
+
+
+async def test_update_card_expands_ancestor_slugs():
+    grandparent = await create_tag("Language")
+    parent = await create_tag("Spanish", parent_slug=grandparent.slug)
+    child = await create_tag("Mexican Spanish", parent_slug=parent.slug)
+    card = await create_card(phrase="Hola", tag_slugs=[])
+
+    updated = await update_card(str(card.id), phrase="Hola", tag_slugs=[child.slug], audio_filename=None)
+
+    assert updated is not None
+    assert set(updated.tag_slugs) == {"mexican-spanish", "spanish", "language"}
+
+
+async def test_update_card_clears_tags_when_empty():
+    tag = await create_tag("French")
+    card = await create_card(phrase="Bonjour", tag_slugs=[tag.slug])
+
+    updated = await update_card(str(card.id), phrase="Bonjour", tag_slugs=[], audio_filename=None)
+
+    assert updated is not None
+    assert updated.tag_slugs == []
+
+
+async def test_update_card_sets_audio_filename():
+    card = await create_card(phrase="Test", tag_slugs=[])
+
+    updated = await update_card(str(card.id), phrase="Test", tag_slugs=[], audio_filename="new.mp3")
+
+    assert updated is not None
+    assert updated.audio_filename == "new.mp3"
+
+
+async def test_update_card_clears_audio_filename():
+    card = await create_card(phrase="Test", tag_slugs=[], audio_filename="old.mp3")
+
+    updated = await update_card(str(card.id), phrase="Test", tag_slugs=[], audio_filename=None)
+
+    assert updated is not None
+    assert updated.audio_filename is None
+
+
+async def test_update_card_not_found_returns_none():
+    from bson import ObjectId
+
+    result = await update_card(str(ObjectId()), phrase="X", tag_slugs=[], audio_filename=None)
+
+    assert result is None
+
+
+async def test_update_card_malformed_id_returns_none():
+    result = await update_card("not-a-valid-id", phrase="X", tag_slugs=[], audio_filename=None)
+
+    assert result is None
