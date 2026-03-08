@@ -7,6 +7,7 @@
                     text-left hover:bg-stone-700/60
                     {% if depth == 0 %}px-2 text-stone-400 hover:text-stone-200
                     {% else %}pl-7 pr-2 text-stone-500 hover:text-stone-300{% endif %}"
+            data-tag-type="parent"
             onclick="toggleTagItem(this); setActiveTag(this)"
             hx-get="/cards?tag_slug={{ node.tag.slug }}"
             hx-target="#card-list"

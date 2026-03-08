@@ -1,3 +1,35 @@
+// ── Sidebar (mobile) ──────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const toggle = document.getElementById('sidebar-toggle');
+  if (!sidebar || !overlay || !toggle) return;
+  const isOpen = sidebar.classList.contains('translate-x-0');
+  if (isOpen) {
+    sidebar.classList.remove('translate-x-0');
+    overlay.classList.add('hidden');
+    toggle.setAttribute('aria-label', 'Open menu');
+  } else {
+    sidebar.classList.add('translate-x-0');
+    overlay.classList.remove('hidden');
+    toggle.setAttribute('aria-label', 'Close menu');
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const toggle = document.getElementById('sidebar-toggle');
+  if (!sidebar || !overlay || !toggle) return;
+  sidebar.classList.remove('translate-x-0');
+  overlay.classList.add('hidden');
+  toggle.setAttribute('aria-label', 'Open menu');
+}
+
+// Expose for inline onclick handlers (e.g. in templates)
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
+
 // ── Tag modal ────────────────────────────────────────────
 function openTagModal() {
   document.getElementById('tag-modal').classList.remove('hidden');
@@ -367,6 +399,27 @@ function updateResultBadge() {
 }
 
 // ── HTMX hooks ───────────────────────────────────────────
+// Track what triggered the last card-list request (parent vs leaf tag)
+let _lastCardListTriggerTagType = null;
+
+document.addEventListener('htmx:beforeRequest', function (evt) {
+  const elt = evt.detail?.elt;
+  if (elt?.getAttribute?.('hx-target') === '#card-list') {
+    _lastCardListTriggerTagType = elt.dataset?.tagType ?? 'leaf';
+  }
+});
+
+// Close mobile sidebar only when navigating (card list swap) from a leaf tag,
+// not when clicking a parent tag (so user can select a child) or when adding/deleting tags
+document.addEventListener('htmx:afterSwap', function (evt) {
+  if (evt.detail?.target?.id === 'card-list') {
+    if (_lastCardListTriggerTagType !== 'parent') {
+      closeSidebar();
+    }
+    _lastCardListTriggerTagType = null;
+  }
+});
+
 // After any HTMX settle, check if the active tag was removed (e.g. by deleting empty tags).
 // If no filter button is active, fall back to "All Cards".
 document.addEventListener('htmx:afterSettle', function () {
@@ -380,9 +433,10 @@ document.addEventListener('htmx:afterSettle', function () {
   }
 });
 
-// Close modals on Escape key
+// Close modals and mobile sidebar on Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    closeSidebar();
     closeTagModal();
     closeConfirmDeleteModal();
     closeCardModal();

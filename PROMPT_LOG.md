@@ -37,6 +37,24 @@ Entry template:
 
 ---
 
+### Entry 044 — 2026-03-08
+**Section:** frontend/templates/partials/tag_tree.html, frontend/static/js/main.js
+
+**Prompt:** For the expected behavior of the sidebar, if we click on a leaf tag it should close the sidebar (current behavior) but if we click on a parent tag, it should stay open in case we want to select a child tag
+
+**What was generated:** Added `data-tag-type="parent"` to parent tag buttons in tag_tree.html; in main.js, a `htmx:beforeRequest` handler records the triggering element's tag type, and the `htmx:afterSwap` handler only closes the sidebar when the trigger was a leaf tag (or All cards), not a parent tag.
+
+---
+
+### Entry 043 — 2026-03-08
+**Section:** frontend/templates, frontend/static/js
+
+**Prompt:** Fix the responsive layout so that on mobile, the sidebar is hidden and there's a hamburger menu icon to show it, change the new card button to just a + and fill the width with the search bar, on the left of the searchbar and the Get Fluent in a smaller font size, centered
+
+**What was generated:** Mobile-responsive layout: sidebar hidden by default with hamburger toggle and overlay; top bar shows hamburger + full-width search bar + compact + button; New card button shows only "+" on mobile; sidebar closes on navigation, Escape, or overlay tap.
+
+---
+
 ### Entry 042 — 2026-03-08
 **Section:** tests/
 
