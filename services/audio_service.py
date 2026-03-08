@@ -1,10 +1,11 @@
+import os
 import uuid
 from pathlib import Path
 
 import aiofiles
 from fastapi import UploadFile
 
-AUDIO_DIR = Path("frontend/static/content")
+AUDIO_DIR = Path(os.getenv("AUDIO_DIR", "frontend/static/content"))
 ALLOWED_AUDIO_EXTENSIONS = frozenset({".mp3", ".wav", ".ogg", ".m4a", ".webm"})
 
 
