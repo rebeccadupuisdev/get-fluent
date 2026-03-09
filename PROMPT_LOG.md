@@ -37,6 +37,30 @@ Entry template:
 
 ---
 
+### Entry 048 — 2026-03-08
+**Section:** frontend/static/js/main.js
+
+**Prompt:** Still have the end cut after ~10 plays
+
+**What was generated:** Replaced `HTMLAudioElement` playback with the Web Audio API. Audio is now fetched, decoded via `decodeAudioData()`, and played through `AudioBufferSourceNode`. This avoids Chrome's ~10 WebMediaPlayer limit that caused the "only hear the end" bug after repeated plays.
+
+**What I learned:**
+- Took approximately 5 prompts to fix this
+
+---
+
+### Entry 047 — 2026-03-08
+**Section:** frontend/static/js/main.js
+
+**Prompt:** When I click on a card I hear the sound, but when I click on another card I only hear the end of the sound
+
+**What was generated:** Fixed `toggleCardAudio` to use a single shared `Audio` element instead of creating new ones each time. Before playing a new card's audio: pause, reset `currentTime` to 0, set new `src`, and call `load()`. Ensures each card's audio always starts from the beginning when switching between cards.
+
+**Modifications I made:**
+- Still not working, letting the agent try again
+
+---
+
 ### Entry 046 — 2026-03-08
 **Section:** frontend/templates/partials/card_item.html, frontend/static/js/main.js, frontend/templates/index.html
 

@@ -554,36 +554,66 @@ document.addEventListener('DOMContentLoaded', initSwipeCardsIfNeeded);
 document.addEventListener('htmx:afterSettle', initSwipeCardsIfNeeded);
 
 // ── Audio playback ──────────────────────────────────────
-let _audioEl = null;
+// Use Web Audio API to avoid Chrome's ~10 WebMediaPlayer limit on HTMLAudioElement.
+let _audioCtx = null;
+let _currentSource = null;
 let _playingCardId = null;
+
+function getAudioContext() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return _audioCtx;
+}
 
 function toggleCardAudio(cardId, url) {
   const card = document.getElementById('card-' + cardId);
 
-  if (_playingCardId === cardId && _audioEl && !_audioEl.paused) {
-    _audioEl.pause();
+  if (_playingCardId === cardId && _currentSource) {
+    try {
+      _currentSource.stop();
+    } catch (_) {}
+    _currentSource = null;
     card?.classList.remove('playing');
     _playingCardId = null;
     return;
   }
 
-  if (_audioEl) {
-    _audioEl.pause();
-    _audioEl.src = '';
-  }
   if (_playingCardId && _playingCardId !== cardId) {
     document.getElementById('card-' + _playingCardId)?.classList.remove('playing');
+    try {
+      if (_currentSource) _currentSource.stop();
+    } catch (_) {}
+    _currentSource = null;
   }
 
-  _audioEl = new Audio(url);
-  _audioEl.play().catch(() => {
-    card?.classList.remove('playing');
-    _playingCardId = null;
-  });
-  card?.classList.add('playing');
   _playingCardId = cardId;
-  _audioEl.onended = () => {
-    card?.classList.remove('playing');
-    _playingCardId = null;
-  };
+  card?.classList.add('playing');
+
+  const ctx = getAudioContext();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+
+  fetch(url)
+    .then((r) => r.arrayBuffer())
+    .then((buf) => ctx.decodeAudioData(buf))
+    .then((buffer) => {
+      if (_playingCardId !== cardId) return;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.onended = () => {
+        if (_playingCardId === cardId) {
+          card?.classList.remove('playing');
+          _playingCardId = null;
+        }
+      };
+      _currentSource = src;
+      src.start(0);
+    })
+    .catch(() => {
+      card?.classList.remove('playing');
+      _playingCardId = null;
+    });
 }
