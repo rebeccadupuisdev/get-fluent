@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 046 — 2026-03-08
+**Section:** frontend/templates/partials/card_item.html, frontend/static/js/main.js, frontend/templates/index.html
+
+**Prompt:** Can you implement a swipe feature on the cards (from right to left) to reveal the edit button, apply this change only for the mobile size
+
+**What was generated:** Wrapped each card in a swipe container for mobile. Swiping left reveals a teal edit button to the right. Touch handlers track gesture and snap to open/closed; card click (e.g. audio) is suppressed after a swipe. Desktop keeps hover-to-show edit; mobile uses swipe only. Added `touch-action: pan-y` so vertical scroll still works.
+
+---
+
 ### Entry 045 — 2026-03-08
 **Section:** auth/email_service.py, requirements.txt, README.md
 

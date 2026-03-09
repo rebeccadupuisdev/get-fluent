@@ -1,31 +1,34 @@
-<div class="card-item group relative flex flex-col gap-2 bg-stone-700 border border-stone-600
-            rounded-xl px-5 py-4 transition-all duration-150 select-none
-            {% if card.audio_filename %}cursor-pointer{% endif %}
-            hover:border-teal-500 hover:shadow-[0_4px_28px_rgba(45,212,191,0.12)] hover:-translate-y-0.5"
-     id="card-{{ card.id }}"
-     data-phrase="{{ card.phrase | e }}"
-     data-tags="{{ card.tag_slugs | join(',') }}"
-     data-audio="{{ card.audio_filename or '' }}"
-     {% if card.audio_filename %}
-     onclick="toggleCardAudio('{{ card.id }}', '/static/content/{{ card.audio_filename }}')"
-     {% endif %}>
+<div class="swipe-card-container w-full overflow-hidden md:overflow-visible">
+  <div class="swipe-card-inner flex md:block gap-2 {% if user_email %}w-[calc(100%+4.5rem)]{% else %}w-full{% endif %} md:w-auto md:gap-0 transition-transform duration-200 ease-out"
+       data-swipe-action-width="72">
+    <div class="card-item group relative flex flex-col gap-2 bg-stone-700 border border-stone-600
+                rounded-xl px-5 py-4 transition-all duration-150 select-none flex-1 min-w-0 md:flex-none md:min-w-0
+                {% if card.audio_filename %}cursor-pointer{% endif %}
+                md:hover:border-teal-400 md:hover:shadow-[0_4px_28px_rgba(45,212,191,0.12)] md:hover:-translate-y-0.5"
+         id="card-{{ card.id }}"
+         data-phrase="{{ card.phrase | e }}"
+         data-tags="{{ card.tag_slugs | join(',') }}"
+         data-audio="{{ card.audio_filename or '' }}"
+         {% if card.audio_filename %}
+         onclick="toggleCardAudio('{{ card.id }}', '/static/content/{{ card.audio_filename }}')"
+         {% endif %}>
 
-  {# — Edit button shown on hover (logged-in only) — #}
-  {% if user_email %}
-  <div class="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-    <button class="w-[26px] h-[26px] flex items-center justify-center rounded-md
-                   border border-stone-600 bg-stone-600/80 text-stone-400
-                   hover:border-teal-500 hover:text-teal-400 transition-all duration-150"
-            onclick="event.stopPropagation(); openEditModal(this)"
-            title="Edit">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
-      </svg>
-    </button>
-  </div>
-  {% endif %}
+      {# — Edit button: hover on desktop, swipe-reveal on mobile — #}
+      {% if user_email %}
+      <div class="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden md:block">
+        <button class="w-[26px] h-[26px] flex items-center justify-center rounded-md
+                       border border-stone-600 bg-stone-600/80 text-stone-400
+                       hover:border-teal-400 hover:text-teal-400 transition-all duration-150"
+                onclick="event.stopPropagation(); openEditModal(this)"
+                title="Edit">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+          </svg>
+        </button>
+      </div>
+      {% endif %}
 
-  {# — Phrase — #}
+      {# — Phrase — #}
   <p class="font-serif text-xl md:text-2xl leading-snug text-stone-100 word-break">{{ card.phrase }}</p>
 
   {# — Tags — #}
@@ -33,7 +36,7 @@
   <div class="flex flex-wrap gap-1.5 mt-1">
     {% for slug in card.tag_slugs %}
     <span class="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-0.5 rounded-full
-                 bg-teal-950/60 text-teal-400 border border-teal-800/50 whitespace-nowrap">
+                 bg-teal-950/60 text-teal-400 border border-teal-600/50 whitespace-nowrap">
       <svg class="w-2.5 h-2.5 shrink-0 opacity-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor">
         <path fill-rule="evenodd" d="M4.5 2A2.5 2.5 0 0 0 2 4.5v2.879a2.5 2.5 0 0 0 .732 1.767l4.5 4.5a2.5 2.5 0 0 0 3.536 0l2.878-2.878a2.5 2.5 0 0 0 0-3.536l-4.5-4.5A2.5 2.5 0 0 0 7.38 2H4.5ZM5 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
       </svg>
@@ -48,4 +51,19 @@
   <span class="font-mono text-[0.68rem] text-stone-600 italic mt-1">no audio attached</span>
   {% endif %}
 
+    </div>
+    {% if user_email %}
+    <div class="swipe-action md:hidden flex-shrink-0 w-16 flex self-stretch">
+      <button class="h-full w-full flex items-center justify-center rounded-xl
+                     bg-teal-600/90 hover:bg-teal-500/80 text-white border border-teal-500/60
+                     transition-colors"
+              onclick="event.stopPropagation(); openEditModal(this)"
+              title="Edit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+        </svg>
+      </button>
+    </div>
+    {% endif %}
+  </div>
 </div>

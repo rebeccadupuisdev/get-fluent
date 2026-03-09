@@ -35,6 +35,12 @@ app.add_middleware(CSRFMiddleware)
 
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return RedirectResponse(url="/static/favicons/favicon.ico")
+
+
 app.include_router(auth_router)
 app.include_router(card_router)
 app.include_router(tag_router)
@@ -53,4 +59,5 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         return RedirectResponse(url="/auth/login", status_code=302)
     # Default: let FastAPI handle other HTTPExceptions
     from fastapi.exception_handlers import http_exception_handler as default
+
     return await default(request, exc)

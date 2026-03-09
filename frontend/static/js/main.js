@@ -73,7 +73,7 @@ function openCardModal() {
   // Reset custom tag checkbox visuals
   form.querySelectorAll('.modal-tag-row').forEach(row => row.classList.remove('bg-teal-600/15'));
   form.querySelectorAll('.modal-tag-checkbox').forEach(cb => {
-    cb.classList.remove('bg-teal-600', 'border-teal-600');
+    cb.classList.remove('bg-teal-600', 'border-teal-500');
     cb.classList.add('bg-stone-800', 'border-stone-600');
   });
   form.querySelectorAll('.modal-tag-check').forEach(svg => svg.classList.add('hidden'));
@@ -113,13 +113,13 @@ function updateTagCheckbox(input) {
   if (input.checked) {
     row.classList.add('bg-teal-600/15');
     box.classList.replace('bg-stone-800', 'bg-teal-600');
-    box.classList.replace('border-stone-600', 'border-teal-600');
+    box.classList.replace('border-stone-600', 'border-teal-500');
     check.classList.remove('hidden');
     text.classList.replace('text-stone-300', 'text-teal-300');
   } else {
     row.classList.remove('bg-teal-600/15');
     box.classList.replace('bg-teal-600', 'bg-stone-800');
-    box.classList.replace('border-teal-600', 'border-stone-600');
+    box.classList.replace('border-teal-500', 'border-stone-600');
     check.classList.add('hidden');
     text.classList.replace('text-teal-300', 'text-stone-300');
   }
@@ -143,7 +143,7 @@ function _fmtTime(t) {
 }
 
 function openEditModal(btn) {
-  const cardEl = btn.closest('.card-item');
+  const cardEl = btn.closest('.card-item') || btn.closest('.swipe-card-container')?.querySelector('.card-item');
   _editCardId = cardEl.id.replace('card-', '');
 
   const phrase = cardEl.dataset.phrase;
@@ -443,6 +443,115 @@ document.addEventListener('keydown', (e) => {
     closeEditModal();
   }
 });
+
+// ── Swipe to reveal edit (mobile only) ───────────────────
+const SWIPE_THRESHOLD = 40;
+const SWIPE_SNAP_THRESHOLD = 0.3;
+
+function closeAllSwipeCards(exceptContainer) {
+  document.querySelectorAll('.swipe-card-container').forEach((container) => {
+    if (container === exceptContainer) return;
+    if ((container._swipeCurrentX ?? 0) < 0) {
+      const inner = container.querySelector('.swipe-card-inner');
+      if (inner) {
+        container._swipeCurrentX = 0;
+        inner.style.transform = 'translateX(0px)';
+      }
+    }
+  });
+}
+
+function initSwipeCards() {
+  const containers = document.querySelectorAll('.swipe-card-container');
+  containers.forEach((container) => {
+    const inner = container.querySelector('.swipe-card-inner');
+    const action = container.querySelector('.swipe-action');
+    if (!inner || !action || !container.matches('.swipe-card-container')) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startTranslate = 0;
+    const actionWidth = parseInt(inner.dataset.swipeActionWidth || '64', 10);
+    container._swipeCurrentX = container._swipeCurrentX ?? 0;
+
+    function isMobile() {
+      return window.matchMedia('(max-width: 767px)').matches;
+    }
+
+    function setTranslate(x) {
+      container._swipeCurrentX = Math.max(-actionWidth, Math.min(0, x));
+      inner.style.transform = `translateX(${container._swipeCurrentX}px)`;
+    }
+
+    function closeOtherOpenCards() {
+      closeAllSwipeCards(container);
+    }
+
+    function onTouchStart(e) {
+      if (!isMobile()) return;
+      closeOtherOpenCards();
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startTranslate = container._swipeCurrentX;
+    }
+
+    function onTouchMove(e) {
+      if (!isMobile()) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+        e.preventDefault();
+      }
+      const newX = startTranslate + dx;
+      setTranslate(newX);
+    }
+
+    function onTouchEnd() {
+      if (!isMobile()) return;
+      const threshold = actionWidth * SWIPE_SNAP_THRESHOLD;
+      const shouldReveal =
+        container._swipeCurrentX < -threshold ||
+        (container._swipeCurrentX < 0 && -container._swipeCurrentX > actionWidth / 2);
+      const finalX = shouldReveal ? -actionWidth : 0;
+      inner.style.transform = `translateX(${finalX}px)`;
+      container._swipeCurrentX = finalX;
+      if (shouldReveal) {
+        container.dataset.swipeOccurred = 'true';
+        setTimeout(() => delete container.dataset.swipeOccurred, 300);
+      }
+    }
+
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
+  });
+}
+
+// Prevent card click (e.g. audio) when user just swiped — allow edit button
+document.addEventListener('click', (e) => {
+  const container = e.target.closest('.swipe-card-container');
+  if (container?.dataset.swipeOccurred === 'true') {
+    if (e.target.closest('.swipe-action')) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
+
+// Close open swipe cards when clicking on background (mobile only)
+document.addEventListener('click', (e) => {
+  if (!window.matchMedia('(max-width: 767px)').matches) return;
+  if (e.target.closest('.swipe-card-container')) return;
+  closeAllSwipeCards();
+});
+
+// Init swipe on load and after HTMX swaps
+function initSwipeCardsIfNeeded() {
+  if (window.matchMedia('(max-width: 767px)').matches) {
+    initSwipeCards();
+  }
+}
+document.addEventListener('DOMContentLoaded', initSwipeCardsIfNeeded);
+document.addEventListener('htmx:afterSettle', initSwipeCardsIfNeeded);
 
 // ── Audio playback ──────────────────────────────────────
 let _audioEl = null;
