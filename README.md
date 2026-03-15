@@ -2,6 +2,8 @@
 
 Card app for language learners: create phrase cards and attach audio.
 
+**[Live app](https://get-fluent-production.up.railway.app/)** — production demo hosted on Railway
+
 ## Tech Stack
 
 - **Backend:** FastAPI + Jinja2 templates
@@ -16,6 +18,14 @@ Card app for language learners: create phrase cards and attach audio.
 ├── models/                # Beanie document models
 │   ├── card.py
 │   └── tag.py
+├── auth/                  # Magic link auth, rate limiting, email
+│   ├── views.py
+│   ├── deps.py
+│   ├── security.py
+│   ├── email_service.py
+│   └── limiter.py
+├── middleware/            # CSRF protection
+│   └── csrf.py
 ├── infrastructure/        # DB connection setup
 │   └── mongo_setup.py
 ├── views/                 # Web route handlers
