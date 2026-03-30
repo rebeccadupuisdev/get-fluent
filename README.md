@@ -2,7 +2,7 @@
 
 Card app for language learners: create phrase cards and attach audio.
 
-**[Live app](https://get-fluent-production.up.railway.app/)** — production demo hosted on Railway
+**[Live app](https://get-fluent.rebeccadupuis.ca)** — production demo hosted on Railway
 
 ## Tech Stack
 
