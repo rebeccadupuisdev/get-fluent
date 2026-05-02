@@ -37,6 +37,42 @@ Entry template:
 
 ---
 
+### Entry 064 — 2026-05-02
+**Section:** Sidebar bulk-edit button alignment (`frontend/static/js/main.js`)
+
+**Prompt:** The alignment is not working
+
+**What was generated:** Fixed `Edit tags` button alignment in bulk-select mode by restoring flex layout when the button is shown, so icon and label render on a single aligned row while remaining stacked below `Select cards`.
+
+---
+
+### Entry 063 — 2026-05-02
+**Section:** Sidebar tag actions / bulk edit controls (`frontend/templates/index.html`, `frontend/static/js/main.js`)
+
+**Prompt:** Move the Select cards button below the Reorder tags, with the same style, the Edit tags should appear below when clicked
+
+**What was generated:** Moved `Select cards` from the top header into the sidebar directly below `Reorder tags` using the same dashed button style. Updated bulk-selection UI behavior so `Edit tags` appears as a stacked button under `Select cards` only when selection mode is enabled.
+
+---
+
+### Entry 062 — 2026-05-02
+**Section:** Bulk tag selection UI polish (`frontend/templates/partials/card_item.html`, `frontend/templates/index.html`, `frontend/static/js/main.js`)
+
+**Prompt:** Put the checkbox were the edit button is (hide the edit button and show the checkbox, make it the same size and style) the button edit tags shoud appear only after clicking the select cards button
+
+**What was generated:** Updated bulk-select UX so the checkbox appears in the exact edit-button slot with matching size/style while hiding per-card edit controls during select mode. Also fixed top-bar behavior so the `Edit tags` action is shown only after `Select cards` is activated.
+
+---
+
+### Entry 061 — 2026-05-02
+**Section:** Cards + tags bulk edit (`views/card_views.py`, `services/card_service.py`, `frontend/templates/partials/*`, `frontend/static/js/main.js`, tests)
+
+**Prompt:** Add the option to select multiple cards to bulk edit the tags
+
+**What was generated:** Added a bulk tag-edit flow: multi-card selection mode in the cards UI, a bulk edit tags modal, and a new `PUT /cards/bulk/tags` route/service to replace tags across selected cards (including ancestor slug expansion). Added tests for the new service behavior and route authorization/update behavior.
+
+---
+
 ### Entry 060 — 2026-05-02
 **Section:** Tests (`test_email_service`, `test_views`)
 

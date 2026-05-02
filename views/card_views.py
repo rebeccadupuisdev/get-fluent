@@ -210,3 +210,30 @@ async def delete_card(
             "user_email": _email,
         },
     )
+
+
+@router.put("/cards/bulk/tags", response_class=HTMLResponse)
+async def bulk_update_card_tags(
+    request: Request,
+    _email: Annotated[str, Depends(require_auth)],
+    card_ids: Annotated[list[str], Form()] = [],
+    tag_slugs: Annotated[list[str], Form()] = [],
+) -> HTMLResponse:
+    """Replace tags for all selected cards and return the refreshed card list + tags."""
+    await card_service.bulk_update_card_tags(card_ids=card_ids, tag_slugs=tag_slugs)
+    cards = await card_service.get_cards()
+    all_tags = await tag_service.get_all_tags()
+    counts = await card_service.get_card_counts_by_tag()
+    tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    return templates.TemplateResponse(
+        request,
+        "partials/card_list_with_tags.html",
+        {
+            "cards": cards,
+            "q": None,
+            "tag_slug": None,
+            "tag_tree": tag_tree,
+            "total_cards": len(cards),
+            "user_email": _email,
+        },
+    )

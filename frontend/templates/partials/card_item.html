@@ -13,10 +13,26 @@
          {% if card.audio_filename %}
          onclick="toggleCardAudio('{{ card.id }}', '/static/content/{{ card.audio_filename }}')"
          {% endif %}>
+      {% if user_email %}
+      <label class="bulk-card-selector hidden absolute top-2.5 right-2.5 z-10 cursor-pointer"
+             onclick="event.stopPropagation()">
+        <input type="checkbox"
+               class="bulk-card-checkbox sr-only"
+               value="{{ card.id }}"
+               onchange="toggleBulkCardSelection(this)">
+        <span class="w-[26px] h-[26px] flex items-center justify-center rounded-md
+                     border border-stone-600 bg-stone-600/80 text-stone-400
+                     hover:border-teal-400 hover:text-teal-400 transition-all duration-150">
+          <svg class="bulk-card-check hidden w-3.5 h-3.5" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </label>
+      {% endif %}
 
       {# — Edit button: hover on desktop, swipe-reveal on mobile — #}
       {% if user_email %}
-      <div class="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden md:block">
+      <div class="bulk-edit-trigger absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 hidden md:block">
         <button class="w-[26px] h-[26px] flex items-center justify-center rounded-md
                        border border-stone-600 bg-stone-600/80 text-stone-400
                        hover:border-teal-400 hover:text-teal-400 transition-all duration-150"

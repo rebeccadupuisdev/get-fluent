@@ -131,3 +131,28 @@ async def delete_card(card_id: str) -> str | None:
     audio_filename = card.audio_filename
     await card.delete()
     return audio_filename
+
+
+async def bulk_update_card_tags(card_ids: list[str], tag_slugs: list[str]) -> int:
+    """Replace tags for multiple cards, expanding each selected tag to its ancestors.
+
+    Returns the number of cards updated. Invalid or missing IDs are ignored.
+    """
+    all_slugs: set[str] = set()
+    for slug in tag_slugs:
+        ancestors = await _collect_ancestor_slugs(slug)
+        all_slugs.update(ancestors)
+
+    updated = 0
+    for card_id in card_ids:
+        try:
+            card = await Card.get(card_id)
+        except Exception:
+            card = None
+        if card is None:
+            continue
+        card.tag_slugs = list(all_slugs)
+        await card.save()
+        updated += 1
+
+    return updated

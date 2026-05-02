@@ -5,6 +5,7 @@ from bson import ObjectId
 
 from models.card import Card
 from services.card_service import (
+    bulk_update_card_tags,
     create_card,
     delete_card,
     get_card,
@@ -411,6 +412,48 @@ async def test_update_card_whitespace_only_phrase_raises():
 
     with pytest.raises(ValueError, match="must not be empty"):
         await update_card(str(card.id), phrase="   ", tag_slugs=[], audio_filename=None)
+
+
+# ---------------------------------------------------------------------------
+# bulk_update_card_tags
+# ---------------------------------------------------------------------------
+
+
+async def test_bulk_update_card_tags_replaces_tags_for_selected_cards():
+    root = await create_tag("Language")
+    parent = await create_tag("Spanish", parent_slug=root.slug)
+    child = await create_tag("Mexican Spanish", parent_slug=parent.slug)
+    untouched_tag = await create_tag("French")
+    selected_one = await create_card(phrase="Hola", tag_slugs=[untouched_tag.slug])
+    selected_two = await create_card(phrase="Adios", tag_slugs=[])
+    untouched_card = await create_card(phrase="Bonjour", tag_slugs=[untouched_tag.slug])
+
+    updated_count = await bulk_update_card_tags(
+        card_ids=[str(selected_one.id), str(selected_two.id)],
+        tag_slugs=[child.slug],
+    )
+
+    assert updated_count == 2
+    refreshed_one = await Card.get(selected_one.id)
+    refreshed_two = await Card.get(selected_two.id)
+    refreshed_untouched = await Card.get(untouched_card.id)
+    assert refreshed_one is not None
+    assert refreshed_two is not None
+    assert refreshed_untouched is not None
+    assert set(refreshed_one.tag_slugs) == {"mexican-spanish", "spanish", "language"}
+    assert set(refreshed_two.tag_slugs) == {"mexican-spanish", "spanish", "language"}
+    assert refreshed_untouched.tag_slugs == ["french"]
+
+
+async def test_bulk_update_card_tags_ignores_invalid_ids():
+    card = await create_card(phrase="Dia duit", tag_slugs=[])
+
+    updated_count = await bulk_update_card_tags(
+        card_ids=["not-a-valid-id", str(card.id)],
+        tag_slugs=[],
+    )
+
+    assert updated_count == 1
 
 
 # ---------------------------------------------------------------------------

@@ -411,6 +411,144 @@ function confirmEditDelete() {
   htmx.ajax('DELETE', '/cards/' + id, { target: '#card-list', swap: 'outerHTML' });
 }
 
+// ── Bulk tag edit (multi-card selection) ─────────────────
+let _bulkSelectMode = false;
+const _bulkSelectedCardIds = new Set();
+const BULK_SELECT_ICON = `
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>`;
+const BULK_CANCEL_ICON = `
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 shrink-0">
+    <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>`;
+
+function _renderBulkCardCheckbox(input) {
+  const label = input.closest('.bulk-card-selector');
+  const check = label?.querySelector('.bulk-card-check');
+  const box = label?.querySelector('span');
+  const card = input.closest('.card-item');
+  if (input.checked) {
+    check?.classList.remove('hidden');
+    box?.classList.add('border-teal-400', 'text-teal-300');
+    card?.classList.add('ring-1', 'ring-teal-500/60');
+  } else {
+    check?.classList.add('hidden');
+    box?.classList.remove('border-teal-400', 'text-teal-300');
+    card?.classList.remove('ring-1', 'ring-teal-500/60');
+  }
+}
+
+function _syncBulkSelectUI() {
+  const selectBtn = document.getElementById('btn-bulk-select');
+  const editTagsBtn = document.getElementById('btn-open-bulk-tags');
+  if (selectBtn) {
+    const label = _bulkSelectMode ? 'Cancel selection' : 'Select cards';
+    const icon = _bulkSelectMode ? BULK_CANCEL_ICON : BULK_SELECT_ICON;
+    selectBtn.innerHTML = `${icon}<span class="font-mono">${label}</span>`;
+    selectBtn.classList.toggle('bg-teal-900/30', _bulkSelectMode);
+    selectBtn.classList.toggle('border-teal-500/60', _bulkSelectMode);
+    selectBtn.classList.toggle('text-teal-300', _bulkSelectMode);
+  }
+  if (editTagsBtn) {
+    editTagsBtn.classList.toggle('hidden', !_bulkSelectMode);
+    editTagsBtn.classList.toggle('flex', _bulkSelectMode);
+    editTagsBtn.classList.toggle('block', false);
+  }
+
+  document.querySelectorAll('.bulk-card-selector').forEach((label) => {
+    label.classList.toggle('hidden', !_bulkSelectMode);
+    label.classList.toggle('block', _bulkSelectMode);
+  });
+
+  document.querySelectorAll('.bulk-edit-trigger').forEach((editBtnWrap) => {
+    editBtnWrap.classList.toggle('md:block', !_bulkSelectMode);
+    editBtnWrap.classList.toggle('md:hidden', _bulkSelectMode);
+  });
+
+  document.querySelectorAll('.bulk-card-checkbox').forEach((input) => {
+    input.checked = _bulkSelectedCardIds.has(input.value);
+    _renderBulkCardCheckbox(input);
+  });
+}
+
+function _syncBulkModalSelection() {
+  const countEl = document.getElementById('bulk-selected-count');
+  if (countEl) countEl.textContent = String(_bulkSelectedCardIds.size);
+
+  const hiddenIds = document.getElementById('bulk-selected-card-ids');
+  if (hiddenIds) {
+    hiddenIds.innerHTML = '';
+    _bulkSelectedCardIds.forEach((cardId) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'card_ids';
+      input.value = cardId;
+      hiddenIds.appendChild(input);
+    });
+  }
+
+  const saveBtn = document.getElementById('bulk-tags-save-btn');
+  if (saveBtn) saveBtn.disabled = _bulkSelectedCardIds.size === 0;
+  const openBtn = document.getElementById('btn-open-bulk-tags');
+  if (openBtn) openBtn.disabled = _bulkSelectedCardIds.size === 0;
+}
+
+function toggleBulkCardSelection(input) {
+  if (input.checked) {
+    _bulkSelectedCardIds.add(input.value);
+  } else {
+    _bulkSelectedCardIds.delete(input.value);
+  }
+  _renderBulkCardCheckbox(input);
+  _syncBulkModalSelection();
+}
+
+function toggleBulkSelectMode() {
+  if (_bulkSelectMode) {
+    endBulkSelectMode();
+    return;
+  }
+  _bulkSelectMode = true;
+  _syncBulkSelectUI();
+}
+
+function endBulkSelectMode() {
+  _bulkSelectMode = false;
+  _bulkSelectedCardIds.clear();
+  closeBulkTagsModal();
+  _syncBulkSelectUI();
+  _syncBulkModalSelection();
+}
+
+function _resetBulkModalTags() {
+  const container = document.getElementById('bulk-modal-tags');
+  if (!container) return;
+  container.querySelectorAll('input[name="tag_slugs"]').forEach((input) => {
+    if (input.checked) {
+      input.checked = false;
+      updateTagCheckbox(input);
+    }
+  });
+}
+
+function openBulkTagsModal() {
+  if (_bulkSelectedCardIds.size === 0) return;
+  _resetBulkModalTags();
+  _syncBulkModalSelection();
+  document.getElementById('bulk-tags-modal')?.classList.remove('hidden');
+}
+
+function closeBulkTagsModal() {
+  document.getElementById('bulk-tags-modal')?.classList.add('hidden');
+}
+
+window.toggleBulkCardSelection = toggleBulkCardSelection;
+window.toggleBulkSelectMode = toggleBulkSelectMode;
+window.endBulkSelectMode = endBulkSelectMode;
+window.openBulkTagsModal = openBulkTagsModal;
+window.closeBulkTagsModal = closeBulkTagsModal;
+
 // ── Sidebar — tag filter + breadcrumb ───────────────────
 function setActiveTag(el) {
   document.querySelectorAll('.tag-filter-btn').forEach((b) => b.classList.remove('is-active'));
@@ -507,6 +645,7 @@ document.addEventListener('htmx:beforeRequest', function (evt) {
 // not when clicking a parent tag (so user can select a child) or when adding/deleting tags
 document.addEventListener('htmx:afterSwap', function (evt) {
   if (evt.detail?.target?.id === 'card-list') {
+    endBulkSelectMode();
     if (_lastCardListTriggerTagType !== 'parent') {
       closeSidebar();
     }
@@ -535,6 +674,7 @@ document.addEventListener('keydown', (e) => {
     closeConfirmDeleteModal();
     closeCardModal();
     closeEditModal();
+    closeBulkTagsModal();
   }
 });
 
@@ -664,6 +804,7 @@ function getAudioContext() {
 }
 
 function toggleCardAudio(cardId, url) {
+  if (_bulkSelectMode) return;
   const card = document.getElementById('card-' + cardId);
 
   if (_playingCardId === cardId && _currentSource) {

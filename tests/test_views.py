@@ -8,6 +8,7 @@ against a mongomock_motor client before each test function runs.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from bson import ObjectId
 import httpx
 import pytest_asyncio
 
@@ -586,6 +587,48 @@ async def test_update_card_whitespace_only_phrase_returns_422(client):
     response = await client.put(f"/cards/{card.id}", data={"phrase": "   "})
 
     assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# PUT /cards/bulk/tags
+# ---------------------------------------------------------------------------
+
+
+async def test_bulk_update_card_tags_updates_selected_cards(client):
+    await client.post("/tags", data={"name": "Language"})
+    await client.post("/tags", data={"name": "Spanish", "parent_slug": "language"})
+    await client.post(
+        "/tags",
+        data={"name": "Mexican Spanish", "parent_slug": "spanish"},
+    )
+    await client.post("/cards", data={"phrase": "Hola"})
+    await client.post("/cards", data={"phrase": "Adios"})
+    cards = await Card.find_all().to_list()
+    assert len(cards) == 2
+
+    response = await client.put(
+        "/cards/bulk/tags",
+        data={
+            "card_ids": [str(cards[0].id), str(cards[1].id)],
+            "tag_slugs": "mexican-spanish",
+        },
+    )
+
+    assert response.status_code == 200
+    refreshed = await Card.find_all().to_list()
+    assert all("language" in c.tag_slugs for c in refreshed)
+    assert all("spanish" in c.tag_slugs for c in refreshed)
+    assert all("mexican-spanish" in c.tag_slugs for c in refreshed)
+
+
+async def test_bulk_update_card_tags_unauthorized_returns_401(client_no_auth):
+    response = await client_no_auth.put(
+        "/cards/bulk/tags",
+        data={"card_ids": [str(ObjectId())], "tag_slugs": []},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------

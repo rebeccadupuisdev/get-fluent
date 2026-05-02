@@ -1,0 +1,41 @@
+{% from "partials/modal_header.html" import modal_header %}
+
+<div id="bulk-tags-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeBulkTagsModal()"></div>
+  <div class="relative bg-stone-900 rounded-2xl w-full max-w-lg border border-stone-700/80 shadow-2xl flex flex-col"
+       style="max-height: 90vh">
+    {{ modal_header("Bulk edit tags", "closeBulkTagsModal") }}
+    <form id="bulk-tags-form"
+          class="flex flex-col min-h-0 flex-1"
+          hx-put="/cards/bulk/tags"
+          hx-target="#card-list"
+          hx-swap="outerHTML"
+          hx-indicator="#htmx-indicator"
+          hx-disabled-elt="find button[type='submit']"
+          hx-on::after-request="if(event.detail.successful){ closeBulkTagsModal(); endBulkSelectMode(); }">
+      <div class="px-6 py-5 space-y-3 overflow-y-auto">
+        <p class="font-mono text-xs text-stone-500">
+          Selected cards: <span id="bulk-selected-count" class="text-teal-400">0</span>
+        </p>
+        <div id="bulk-selected-card-ids"></div>
+        <div>
+          <label class="block font-mono text-xs text-stone-500 uppercase tracking-widest mb-2">Tags</label>
+          {% include "partials/bulk_edit_modal_tags.html" %}
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-stone-700/60 flex items-center justify-end gap-2">
+        <button type="button"
+                onclick="closeBulkTagsModal()"
+                class="px-4 py-2 rounded-lg font-mono bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-stone-200 text-sm transition-colors">
+          Cancel
+        </button>
+        <button id="bulk-tags-save-btn"
+                type="submit"
+                disabled
+                class="px-4 py-2 rounded-lg font-mono bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm transition-colors">
+          Apply tags
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
