@@ -93,6 +93,20 @@ async def test_list_cards_with_query_returns_matching_card(client):
     assert "Bonjour monde" not in response.text
 
 
+async def test_list_cards_with_query_matches_translation(client):
+    await client.post(
+        "/cards",
+        data={"phrase": "Bonjour", "translation": "hello"},
+    )
+    await client.post("/cards", data={"phrase": "Adios", "translation": "goodbye"})
+
+    response = await client.get("/cards", params={"q": "hello"})
+
+    assert response.status_code == 200
+    assert "Bonjour" in response.text
+    assert "Adios" not in response.text
+
+
 async def test_list_cards_with_tag_slug_returns_filtered_cards(client):
     await client.post("/tags", data={"name": "French"})
     await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})

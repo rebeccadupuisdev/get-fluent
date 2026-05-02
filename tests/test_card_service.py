@@ -122,6 +122,16 @@ async def test_search_cards_case_insensitive():
     assert all("buen" in r.phrase.lower() for r in results)
 
 
+async def test_search_cards_matches_translation():
+    await create_card(phrase="Bonjour", translation="Hello", tag_slugs=[])
+    await create_card(phrase="Au revoir", translation="Goodbye", tag_slugs=[])
+
+    results = await search_cards("hello")
+
+    assert len(results) == 1
+    assert results[0].phrase == "Bonjour"
+
+
 async def test_search_cards_no_match():
     await create_card(phrase="Hello", tag_slugs=[])
     results = await search_cards("xyz123")

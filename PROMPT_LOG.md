@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 068 — 2026-05-02
+**Section:** Card search — `services/card_service.py`, `frontend/templates/partials/search_bar.html`, tests
+
+**Prompt:** When using the search option, it should also search in the translations
+
+**What was generated:** Extended `search_cards` to match the query against either `phrase` or `translation` (case-insensitive, regex escaped). Updated the search bar placeholder, and added service and view tests for translation matches.
+
+---
+
 ### Entry 067 — 2026-05-02
 **Section:** Bulk delete modal submit reliability (`views/card_views.py`, `frontend/templates/partials/bulk_delete_cards_modal.html`, `tests/test_views.py`)
 
