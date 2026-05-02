@@ -7,6 +7,7 @@
                 md:hover:border-teal-400 md:hover:shadow-[0_4px_28px_rgba(45,212,191,0.12)] md:hover:-translate-y-0.5"
          id="card-{{ card.id }}"
          data-phrase="{{ card.phrase | e }}"
+         data-translation="{{ card.translation | e if card.translation else '' }}"
          data-tags="{{ card.tag_slugs | join(',') }}"
          data-audio="{{ card.audio_filename or '' }}"
          {% if card.audio_filename %}
@@ -30,6 +31,11 @@
 
       {# — Phrase — #}
   <p class="font-serif text-xl md:text-2xl leading-snug text-stone-100 word-break">{{ card.phrase }}</p>
+
+  {# — Translation — #}
+  {% if card.translation %}
+  <p class="font-quicksand text-sm text-stone-400 leading-snug word-break">{{ card.translation }}</p>
+  {% endif %}
 
   {# — Tags — #}
   {% if card.tag_slugs %}

@@ -27,6 +27,7 @@ async def create_card(
     phrase: str,
     tag_slugs: list[str],
     audio_filename: str | None = None,
+    translation: str | None = None,
 ) -> Card:
     """Create a card, expanding each tag slug to include all ancestor slugs."""
     if not phrase or not phrase.strip():
@@ -36,7 +37,7 @@ async def create_card(
         ancestors = await _collect_ancestor_slugs(slug)
         all_slugs.update(ancestors)
 
-    card = Card(phrase=phrase, tag_slugs=list(all_slugs), audio_filename=audio_filename)
+    card = Card(phrase=phrase, translation=translation, tag_slugs=list(all_slugs), audio_filename=audio_filename)
     await card.insert()
     return card
 
@@ -85,8 +86,9 @@ async def update_card(
     phrase: str,
     tag_slugs: list[str],
     audio_filename: str | None,
+    translation: str | None = None,
 ) -> Card | None:
-    """Update a card's phrase, tags, and audio. Returns the updated card or None."""
+    """Update a card's phrase, translation, tags, and audio. Returns the updated card or None."""
     try:
         card = await Card.get(card_id)
     except ValidationError:
@@ -103,6 +105,7 @@ async def update_card(
         all_slugs.update(ancestors)
 
     card.phrase = phrase
+    card.translation = translation
     card.tag_slugs = list(all_slugs)
     card.audio_filename = audio_filename
     await card.save()

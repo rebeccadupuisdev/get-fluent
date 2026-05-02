@@ -41,6 +41,7 @@ async def create_card(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
     phrase: Annotated[str, Form()],
+    translation: Annotated[str, Form()] = "",
     tag_slugs: Annotated[list[str], Form()] = [],
     audio: Annotated[UploadFile | None, File()] = None,
 ) -> HTMLResponse:
@@ -54,6 +55,7 @@ async def create_card(
             phrase=phrase,
             tag_slugs=tag_slugs,
             audio_filename=audio_filename,
+            translation=translation.strip() or None,
         )
     except ValidationError:
         raise HTTPException(422, "Phrase too long (max 2000 characters)")
@@ -103,6 +105,7 @@ async def update_card(
     _email: Annotated[str, Depends(require_auth)],
     card_id: str,
     phrase: Annotated[str, Form()],
+    translation: Annotated[str, Form()] = "",
     tag_slugs: Annotated[list[str], Form()] = [],
     audio: Annotated[UploadFile | None, File()] = None,
     remove_audio: Annotated[str, Form()] = "false",
@@ -129,6 +132,7 @@ async def update_card(
             phrase=phrase,
             tag_slugs=tag_slugs,
             audio_filename=audio_filename,
+            translation=translation.strip() or None,
         )
     except ValidationError:
         raise HTTPException(422, "Phrase too long (max 2000 characters)")

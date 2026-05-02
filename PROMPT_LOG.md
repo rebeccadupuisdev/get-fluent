@@ -37,6 +37,19 @@ Entry template:
 
 ---
 
+### Entry 049 — 2026-05-02
+**Section:** models/card.py, services/card_service.py, views/card_views.py, frontend/
+
+**Persona:** code.tutor.stepwise
+
+**Prompt:** Add an option to add the translation of the phrase to the card, make the translation appear under the phrase on the card in the font Quicksand, make a plan of the modifications needed and apply them step by step
+
+**What was generated:** Added an optional `translation` field to the Card model, threaded it through the service and route layers, loaded the Quicksand font in base.html, added translation textareas to both the New and Edit card modals, rendered the translation beneath the phrase on card items, and wired up JS to pre-populate the edit modal's translation field.
+
+**Modifications I made:** Prompted to add tests for the translation field
+
+---
+
 ### Entry 048 — 2026-03-08
 **Section:** frontend/static/js/main.js
 

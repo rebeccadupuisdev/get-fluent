@@ -411,3 +411,36 @@ async def test_update_card_whitespace_only_phrase_raises():
 
     with pytest.raises(ValueError, match="must not be empty"):
         await update_card(str(card.id), phrase="   ", tag_slugs=[], audio_filename=None)
+
+
+# ---------------------------------------------------------------------------
+# translation field
+# ---------------------------------------------------------------------------
+
+
+async def test_create_card_with_translation():
+    card = await create_card(phrase="Bonjour", tag_slugs=[], translation="Hello")
+
+    assert card.translation == "Hello"
+
+
+async def test_update_card_sets_translation():
+    card = await create_card(phrase="Salut", tag_slugs=[])
+
+    updated = await update_card(
+        str(card.id), phrase="Salut", tag_slugs=[], audio_filename=None, translation="Hi"
+    )
+
+    assert updated is not None
+    assert updated.translation == "Hi"
+
+
+async def test_update_card_clears_translation():
+    card = await create_card(phrase="Salut", tag_slugs=[], translation="Hi")
+
+    updated = await update_card(
+        str(card.id), phrase="Salut", tag_slugs=[], audio_filename=None, translation=None
+    )
+
+    assert updated is not None
+    assert updated.translation is None

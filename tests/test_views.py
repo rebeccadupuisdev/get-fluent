@@ -405,6 +405,43 @@ async def test_update_card_whitespace_only_phrase_returns_422(client):
 
 
 # ---------------------------------------------------------------------------
+# translation field
+# ---------------------------------------------------------------------------
+
+
+async def test_create_card_with_translation_appears_in_response(client):
+    """Translation submitted on create is present in the returned HTML fragment."""
+    response = await client.post(
+        "/cards", data={"phrase": "Bonjour", "translation": "Hello"}
+    )
+
+    assert response.status_code == 200
+    assert "Hello" in response.text
+
+
+async def test_create_card_whitespace_only_translation_stored_as_none(client):
+    """Whitespace-only translation is normalised to None, not stored as a blank string."""
+    await client.post("/cards", data={"phrase": "Bonjour", "translation": "   "})
+
+    card = await Card.find_one()
+    assert card is not None
+    assert card.translation is None
+
+
+async def test_update_card_with_translation_persists(client):
+    """Translation submitted on update is stored on the card."""
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+
+    await client.put(
+        f"/cards/{card.id}", data={"phrase": "Salut", "translation": "Hi"}
+    )
+
+    refreshed = await Card.get(card.id)
+    assert refreshed.translation == "Hi"
+
+
+# ---------------------------------------------------------------------------
 # Auth — unauthenticated requests to protected routes
 # ---------------------------------------------------------------------------
 

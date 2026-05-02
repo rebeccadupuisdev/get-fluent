@@ -147,6 +147,7 @@ function openEditModal(btn) {
   _editCardId = cardEl.id.replace('card-', '');
 
   const phrase = cardEl.dataset.phrase;
+  const translation = cardEl.dataset.translation || '';
   const tags = cardEl.dataset.tags ? cardEl.dataset.tags.split(',').filter(Boolean) : [];
   const audio = cardEl.dataset.audio;
 
@@ -155,6 +156,7 @@ function openEditModal(btn) {
   htmx.process(form);
 
   document.getElementById('edit-phrase').value = phrase;
+  document.getElementById('edit-translation').value = translation;
 
   stopEditAudio();
   document.getElementById('edit-remove-audio').value = 'false';
