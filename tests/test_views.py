@@ -631,6 +631,64 @@ async def test_bulk_update_card_tags_unauthorized_returns_401(client_no_auth):
     assert response.status_code == 401
 
 
+async def test_bulk_delete_cards_deletes_selected_cards_and_audio(client):
+    with patch("services.audio_service.delete_audio", new_callable=AsyncMock) as mock_delete:
+        await client.post(
+            "/cards",
+            data={"phrase": "Delete me", "synthesised_audio_filename": "delete-me.wav"},
+        )
+        await client.post("/cards", data={"phrase": "Delete me too"})
+        await client.post("/cards", data={"phrase": "Keep me"})
+        cards = await Card.find_all().to_list()
+        assert len(cards) == 3
+        cards_by_phrase = {card.phrase: card for card in cards}
+
+        response = await client.request(
+            "DELETE",
+            "/cards/bulk",
+            data={
+                "card_ids": [
+                    str(cards_by_phrase["Delete me"].id),
+                    str(cards_by_phrase["Delete me too"].id),
+                ]
+            },
+        )
+
+    assert response.status_code == 200
+    remaining_cards = await Card.find_all().to_list()
+    assert len(remaining_cards) == 1
+    assert remaining_cards[0].phrase == "Keep me"
+    mock_delete.assert_awaited_once_with("delete-me.wav")
+
+
+async def test_bulk_delete_cards_unauthorized_returns_401(client_no_auth):
+    response = await client_no_auth.request(
+        "DELETE",
+        "/cards/bulk",
+        data={"card_ids": [str(ObjectId())]},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 401
+
+
+async def test_bulk_delete_cards_post_alias_deletes_selected_cards(client):
+    await client.post("/cards", data={"phrase": "Delete me"})
+    await client.post("/cards", data={"phrase": "Keep me"})
+    cards = await Card.find_all().to_list()
+    cards_by_phrase = {card.phrase: card for card in cards}
+
+    response = await client.post(
+        "/cards/bulk/delete",
+        data={"card_ids": [str(cards_by_phrase["Delete me"].id)]},
+    )
+
+    assert response.status_code == 200
+    remaining_cards = await Card.find_all().to_list()
+    assert len(remaining_cards) == 1
+    assert remaining_cards[0].phrase == "Keep me"
+
+
 # ---------------------------------------------------------------------------
 # translation field
 # ---------------------------------------------------------------------------

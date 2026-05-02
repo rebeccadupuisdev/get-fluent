@@ -37,6 +37,33 @@ Entry template:
 
 ---
 
+### Entry 067 — 2026-05-02
+**Section:** Bulk delete modal submit reliability (`views/card_views.py`, `frontend/templates/partials/bulk_delete_cards_modal.html`, `tests/test_views.py`)
+
+**Prompt:** The delete is not working, when I accept the delete in the modal, nothing happens, even if I refresh
+
+**What was generated:** Fixed the bulk-delete submit path by adding a POST alias endpoint (`/cards/bulk/delete`) for HTMX form submission and making backend ID extraction robust across form/query payload styles. Updated the modal to use `hx-post` and added a route test for the new alias.
+
+---
+
+### Entry 066 — 2026-05-02
+**Section:** Route matching fix for bulk card delete (`views/card_views.py`, `tests/test_views.py`)
+
+**Prompt:** @/Users/zeste/.cursor/projects/Users-zeste-Documents-Programming-get-fluent/terminals/12.txt:64-121 One test failed
+
+**What was generated:** Diagnosed and fixed a FastAPI route collision where `DELETE /cards/{card_id}` captured `/cards/bulk`, preventing bulk deletes. Reordered routes so `DELETE /cards/bulk` matches first and verified with targeted bulk-delete view tests.
+
+---
+
+### Entry 065 — 2026-05-02
+**Section:** Bulk card deletion flow (`frontend/templates/index.html`, `frontend/templates/partials/bulk_delete_cards_modal.html`, `frontend/static/js/main.js`, `views/card_views.py`, `services/card_service.py`, tests)
+
+**Prompt:** When clicking the Select cards button, add a button under Edit cards tags named "Delete cards", in the same style as the delete empty tag, implement the backend logic to allow bulk delete of cards, create a modal to confirm the delete
+
+**What was generated:** Added a new bulk-delete cards action shown in Select mode under `Edit cards tags`, with a confirmation modal matching the existing warning/delete styling. Implemented `DELETE /cards/bulk` plus service-level bulk deletion (including cleanup of associated audio files) and added service/view tests covering success and authorization behavior.
+
+---
+
 ### Entry 064 — 2026-05-02
 **Section:** Sidebar bulk-edit button alignment (`frontend/static/js/main.js`)
 

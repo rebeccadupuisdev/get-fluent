@@ -95,6 +95,20 @@
         <span class="font-mono">Edit cards tags</span>
       </button>
 
+      <button id="btn-open-bulk-delete"
+              type="button"
+              onclick="openBulkDeleteCardsModal()"
+              class="hidden w-full items-center gap-2 px-3 py-2 rounded-lg text-sm
+                     text-stone-500 border border-dashed border-stone-700
+                     hover:text-amber-400 hover:border-amber-600/60 hover:bg-amber-600/10 transition-all
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4 shrink-0">
+          <path fill-rule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5a.75.75 0 0 1 .786-.711Z" clip-rule="evenodd" />
+        </svg>
+        <span class="font-mono">Delete cards</span>
+      </button>
+
       <button class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm
                      text-stone-500 border border-dashed border-stone-700
                      hover:text-amber-400 hover:border-amber-600/60 hover:bg-amber-600/10 transition-all"
@@ -209,6 +223,7 @@
 {# ── Edit Card Modal ── #}
 {% include "partials/edit_card_modal.html" %}
 {% include "partials/bulk_edit_tags_modal.html" %}
+{% include "partials/bulk_delete_cards_modal.html" %}
 
 {# ── New Tag Modal ── #}
 <div id="tag-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">

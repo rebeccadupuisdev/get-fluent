@@ -5,6 +5,7 @@ from bson import ObjectId
 
 from models.card import Card
 from services.card_service import (
+    bulk_delete_cards,
     bulk_update_card_tags,
     create_card,
     delete_card,
@@ -454,6 +455,28 @@ async def test_bulk_update_card_tags_ignores_invalid_ids():
     )
 
     assert updated_count == 1
+
+
+async def test_bulk_delete_cards_deletes_selected_cards_and_returns_audio_filenames():
+    selected_one = await create_card(phrase="One", tag_slugs=[], audio_filename="one.mp3")
+    selected_two = await create_card(phrase="Two", tag_slugs=[], audio_filename=None)
+    untouched = await create_card(phrase="Three", tag_slugs=[], audio_filename="three.mp3")
+
+    deleted_audio = await bulk_delete_cards([str(selected_one.id), str(selected_two.id)])
+
+    assert deleted_audio == ["one.mp3"]
+    assert await Card.get(selected_one.id) is None
+    assert await Card.get(selected_two.id) is None
+    assert await Card.get(untouched.id) is not None
+
+
+async def test_bulk_delete_cards_ignores_invalid_and_missing_ids():
+    kept = await create_card(phrase="Keep me", tag_slugs=[])
+
+    deleted_audio = await bulk_delete_cards(["not-a-valid-id", str(kept.id), str(ObjectId())])
+
+    assert deleted_audio == []
+    assert await Card.get(kept.id) is None
 
 
 # ---------------------------------------------------------------------------

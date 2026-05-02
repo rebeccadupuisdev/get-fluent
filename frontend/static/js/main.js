@@ -442,6 +442,7 @@ function _renderBulkCardCheckbox(input) {
 function _syncBulkSelectUI() {
   const selectBtn = document.getElementById('btn-bulk-select');
   const editTagsBtn = document.getElementById('btn-open-bulk-tags');
+  const deleteCardsBtn = document.getElementById('btn-open-bulk-delete');
   if (selectBtn) {
     const label = _bulkSelectMode ? 'Cancel selection' : 'Select cards';
     const icon = _bulkSelectMode ? BULK_CANCEL_ICON : BULK_SELECT_ICON;
@@ -454,6 +455,11 @@ function _syncBulkSelectUI() {
     editTagsBtn.classList.toggle('hidden', !_bulkSelectMode);
     editTagsBtn.classList.toggle('flex', _bulkSelectMode);
     editTagsBtn.classList.toggle('block', false);
+  }
+  if (deleteCardsBtn) {
+    deleteCardsBtn.classList.toggle('hidden', !_bulkSelectMode);
+    deleteCardsBtn.classList.toggle('flex', _bulkSelectMode);
+    deleteCardsBtn.classList.toggle('block', false);
   }
 
   document.querySelectorAll('.bulk-card-selector').forEach((label) => {
@@ -492,6 +498,21 @@ function _syncBulkModalSelection() {
   if (saveBtn) saveBtn.disabled = _bulkSelectedCardIds.size === 0;
   const openBtn = document.getElementById('btn-open-bulk-tags');
   if (openBtn) openBtn.disabled = _bulkSelectedCardIds.size === 0;
+  const deleteOpenBtn = document.getElementById('btn-open-bulk-delete');
+  if (deleteOpenBtn) deleteOpenBtn.disabled = _bulkSelectedCardIds.size === 0;
+  const deleteCountEl = document.getElementById('bulk-delete-selected-count');
+  if (deleteCountEl) deleteCountEl.textContent = String(_bulkSelectedCardIds.size);
+  const deleteHiddenIds = document.getElementById('bulk-delete-selected-card-ids');
+  if (deleteHiddenIds) {
+    deleteHiddenIds.innerHTML = '';
+    _bulkSelectedCardIds.forEach((cardId) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'card_ids';
+      input.value = cardId;
+      deleteHiddenIds.appendChild(input);
+    });
+  }
 }
 
 function toggleBulkCardSelection(input) {
@@ -517,6 +538,7 @@ function endBulkSelectMode() {
   _bulkSelectMode = false;
   _bulkSelectedCardIds.clear();
   closeBulkTagsModal();
+  closeBulkDeleteCardsModal();
   _syncBulkSelectUI();
   _syncBulkModalSelection();
 }
@@ -543,11 +565,23 @@ function closeBulkTagsModal() {
   document.getElementById('bulk-tags-modal')?.classList.add('hidden');
 }
 
+function openBulkDeleteCardsModal() {
+  if (_bulkSelectedCardIds.size === 0) return;
+  _syncBulkModalSelection();
+  document.getElementById('bulk-delete-cards-modal')?.classList.remove('hidden');
+}
+
+function closeBulkDeleteCardsModal() {
+  document.getElementById('bulk-delete-cards-modal')?.classList.add('hidden');
+}
+
 window.toggleBulkCardSelection = toggleBulkCardSelection;
 window.toggleBulkSelectMode = toggleBulkSelectMode;
 window.endBulkSelectMode = endBulkSelectMode;
 window.openBulkTagsModal = openBulkTagsModal;
 window.closeBulkTagsModal = closeBulkTagsModal;
+window.openBulkDeleteCardsModal = openBulkDeleteCardsModal;
+window.closeBulkDeleteCardsModal = closeBulkDeleteCardsModal;
 
 // ── Sidebar — tag filter + breadcrumb ───────────────────
 function setActiveTag(el) {
@@ -675,6 +709,7 @@ document.addEventListener('keydown', (e) => {
     closeCardModal();
     closeEditModal();
     closeBulkTagsModal();
+    closeBulkDeleteCardsModal();
   }
 });
 

@@ -184,15 +184,45 @@ async def update_card(
     )
 
 
-@router.delete("/cards/{card_id}", response_class=HTMLResponse)
-async def delete_card(
+@router.put("/cards/bulk/tags", response_class=HTMLResponse)
+async def bulk_update_card_tags(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
-    card_id: str,
+    card_ids: Annotated[list[str], Form()] = [],
+    tag_slugs: Annotated[list[str], Form()] = [],
 ) -> HTMLResponse:
-    """Delete a card and its associated audio, then return the updated card list."""
-    audio_filename = await card_service.delete_card(card_id)
-    if audio_filename:
+    """Replace tags for all selected cards and return the refreshed card list + tags."""
+    await card_service.bulk_update_card_tags(card_ids=card_ids, tag_slugs=tag_slugs)
+    cards = await card_service.get_cards()
+    all_tags = await tag_service.get_all_tags()
+    counts = await card_service.get_card_counts_by_tag()
+    tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    return templates.TemplateResponse(
+        request,
+        "partials/card_list_with_tags.html",
+        {
+            "cards": cards,
+            "q": None,
+            "tag_slug": None,
+            "tag_tree": tag_tree,
+            "total_cards": len(cards),
+            "user_email": _email,
+        },
+    )
+
+
+@router.delete("/cards/bulk", response_class=HTMLResponse)
+async def bulk_delete_cards(
+    request: Request,
+    _email: Annotated[str, Depends(require_auth)],
+) -> HTMLResponse:
+    """Delete selected cards and their associated audio, then refresh cards + tags."""
+    form = await request.form()
+    form_card_ids = form.getlist("card_ids")
+    query_card_ids = request.query_params.getlist("card_ids")
+    card_ids = form_card_ids or query_card_ids
+    audio_filenames = await card_service.bulk_delete_cards(card_ids=card_ids)
+    for audio_filename in audio_filenames:
         await audio_service.delete_audio(audio_filename)
     cards = await card_service.get_cards()
     all_tags = await tag_service.get_all_tags()
@@ -212,15 +242,25 @@ async def delete_card(
     )
 
 
-@router.put("/cards/bulk/tags", response_class=HTMLResponse)
-async def bulk_update_card_tags(
+@router.post("/cards/bulk/delete", response_class=HTMLResponse)
+async def bulk_delete_cards_post(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
-    card_ids: Annotated[list[str], Form()] = [],
-    tag_slugs: Annotated[list[str], Form()] = [],
 ) -> HTMLResponse:
-    """Replace tags for all selected cards and return the refreshed card list + tags."""
-    await card_service.bulk_update_card_tags(card_ids=card_ids, tag_slugs=tag_slugs)
+    """HTMX-friendly alias for bulk deletion using POST form submission."""
+    return await bulk_delete_cards(request=request, _email=_email)
+
+
+@router.delete("/cards/{card_id}", response_class=HTMLResponse)
+async def delete_card(
+    request: Request,
+    _email: Annotated[str, Depends(require_auth)],
+    card_id: str,
+) -> HTMLResponse:
+    """Delete a card and its associated audio, then return the updated card list."""
+    audio_filename = await card_service.delete_card(card_id)
+    if audio_filename:
+        await audio_service.delete_audio(audio_filename)
     cards = await card_service.get_cards()
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()

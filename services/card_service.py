@@ -156,3 +156,22 @@ async def bulk_update_card_tags(card_ids: list[str], tag_slugs: list[str]) -> in
         updated += 1
 
     return updated
+
+
+async def bulk_delete_cards(card_ids: list[str]) -> list[str]:
+    """Delete multiple cards and return associated audio filenames.
+
+    Invalid or missing card IDs are ignored.
+    """
+    deleted_audio_filenames: list[str] = []
+    for card_id in card_ids:
+        try:
+            card = await Card.get(card_id)
+        except Exception:
+            card = None
+        if card is None:
+            continue
+        if card.audio_filename:
+            deleted_audio_filenames.append(card.audio_filename)
+        await card.delete()
+    return deleted_audio_filenames
