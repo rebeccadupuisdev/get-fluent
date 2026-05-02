@@ -696,3 +696,167 @@ function toggleCardAudio(cardId, url) {
       _playingCardId = null;
     });
 }
+
+// ── Tag drag-and-drop reordering ─────────────────────────
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+let _reorderModeActive = false;
+
+function toggleReorderMode(btn) {
+  _reorderModeActive = !_reorderModeActive;
+
+  const tagTree = document.getElementById('tag-tree');
+  if (tagTree) {
+    tagTree.classList.toggle('reorder-mode', _reorderModeActive);
+    tagTree.querySelectorAll('li[data-slug]').forEach((li) => {
+      li.draggable = _reorderModeActive;
+    });
+  }
+
+  btn.classList.toggle('is-reordering', _reorderModeActive);
+  const label = btn.querySelector('.reorder-btn-label');
+  if (label) label.textContent = _reorderModeActive ? 'Done reordering' : 'Reorder tags';
+
+  if (!_reorderModeActive) {
+    htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
+  }
+}
+window.toggleReorderMode = toggleReorderMode;
+
+let _tagDragController = null;
+
+function initTagDragDrop() {
+  const tagTree = document.getElementById('tag-tree');
+  if (!tagTree) return;
+
+  // Re-apply reorder mode if it was active before this re-render.
+  if (_reorderModeActive) {
+    tagTree.classList.add('reorder-mode');
+    tagTree.querySelectorAll('li[data-slug]').forEach((li) => {
+      li.draggable = true;
+    });
+  }
+
+  if (_tagDragController) _tagDragController.abort();
+  _tagDragController = new AbortController();
+  const { signal } = _tagDragController;
+
+  let draggedEl = null;
+
+  function clearDropIndicators() {
+    tagTree.querySelectorAll('li[data-slug]').forEach((el) => {
+      el.style.borderTop = '';
+      el.style.borderBottom = '';
+    });
+  }
+
+  tagTree.addEventListener('dragstart', (e) => {
+    const li = e.target.closest('li[data-slug]');
+    if (!li) return;
+    draggedEl = li;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', li.dataset.slug);
+
+    // Ghost image: clone only the header row so expanded children aren't included.
+    // For expandable tags the row is li > .tag-item > .flex;
+    // for leaf tags it is li > .flex — in both cases the direct parent of the button.
+    const btn = li.querySelector('button.tag-filter-btn');
+    const buttonRow = btn ? btn.parentElement : li;
+    const rowRect = buttonRow.getBoundingClientRect();
+
+    const ghost = buttonRow.cloneNode(true);
+    ghost.style.cssText = `
+      position: fixed;
+      left: ${rowRect.left}px;
+      top: -9999px;
+      width: ${rowRect.width}px;
+      background: rgb(28 25 23);
+      border-radius: 8px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(ghost);
+
+    const cursorX = Math.min(e.clientX - rowRect.left, rowRect.width);
+    const cursorY = Math.max(0, e.clientY - rowRect.top);
+    e.dataTransfer.setDragImage(ghost, cursorX, cursorY);
+
+    // Browser snapshots the ghost at dragstart; remove it next frame.
+    requestAnimationFrame(() => {
+      ghost.remove();
+      li.classList.add('opacity-40');
+    });
+  }, { signal });
+
+  tagTree.addEventListener('dragend', () => {
+    if (draggedEl) draggedEl.classList.remove('opacity-40');
+    clearDropIndicators();
+    draggedEl = null;
+  }, { signal });
+
+  tagTree.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!draggedEl) return;
+    const target = e.target.closest('li[data-slug]');
+    if (!target || target === draggedEl) return;
+    if (target.dataset.parentSlug !== draggedEl.dataset.parentSlug) return;
+    e.dataTransfer.dropEffect = 'move';
+    clearDropIndicators();
+    const rect = target.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      target.style.borderTop = '2px solid rgb(20 184 166)';
+    } else {
+      target.style.borderBottom = '2px solid rgb(20 184 166)';
+    }
+  }, { signal });
+
+  tagTree.addEventListener('dragleave', (e) => {
+    const target = e.target.closest('li[data-slug]');
+    if (target && !target.contains(e.relatedTarget)) {
+      target.style.borderTop = '';
+      target.style.borderBottom = '';
+    }
+  }, { signal });
+
+  tagTree.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (!draggedEl) return;
+    const target = e.target.closest('li[data-slug]');
+    if (!target || target === draggedEl) return;
+    if (target.dataset.parentSlug !== draggedEl.dataset.parentSlug) return;
+
+    const rect = target.getBoundingClientRect();
+    const insertBefore = e.clientY < rect.top + rect.height / 2;
+
+    clearDropIndicators();
+    draggedEl.classList.remove('opacity-40');
+
+    const parent = target.parentElement;
+    if (insertBefore) {
+      parent.insertBefore(draggedEl, target);
+    } else {
+      parent.insertBefore(draggedEl, target.nextSibling);
+    }
+
+    const slugs = Array.from(parent.children)
+      .filter((el) => el.tagName === 'LI' && el.dataset?.slug)
+      .map((el) => el.dataset.slug);
+    const parentSlug = draggedEl.dataset.parentSlug || null;
+
+    draggedEl = null;
+
+    fetch('/tags/reorder', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+      body: JSON.stringify({ slugs, parent_slug: parentSlug }),
+    }).catch(() => {
+      htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
+    });
+  }, { signal });
+}
+
+window.initTagDragDrop = initTagDragDrop;
+document.addEventListener('DOMContentLoaded', initTagDragDrop);
+document.addEventListener('htmx:afterSettle', initTagDragDrop);

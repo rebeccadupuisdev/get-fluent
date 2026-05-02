@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 054 — 2026-05-02
+**Section:** Tags / Sidebar
+
+**Prompt:** I want to be able to reorder tags, I want to be able to reorder root tags, and be able to reorder tags that has a parent tag
+
+**What was generated:** Added an `order: int` field to the `Tag` model, a `reorder_tags` service function, a `PUT /tags/reorder` route, HTML5 drag-and-drop with six-dot grip handles in the tag tree sidebar, and a full set of service and route tests (107 passing).
+
+---
+
 ### Entry 053 — 2026-05-02
 **Section:** Tests / ABAIR integration
 

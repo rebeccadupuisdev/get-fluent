@@ -37,7 +37,12 @@ async def create_card(
         ancestors = await _collect_ancestor_slugs(slug)
         all_slugs.update(ancestors)
 
-    card = Card(phrase=phrase, translation=translation, tag_slugs=list(all_slugs), audio_filename=audio_filename)
+    card = Card(
+        phrase=phrase,
+        translation=translation,
+        tag_slugs=list(all_slugs),
+        audio_filename=audio_filename,
+    )
     await card.insert()
     return card
 

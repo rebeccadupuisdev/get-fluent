@@ -81,6 +81,7 @@ def build_tag_tree(tags: list[Tag], counts: dict[str, int] | None = None) -> lis
     Top-level tags (parent_slug is None) form the roots.
     Tags whose parent_slug does not match any known slug are also treated as roots.
     counts maps tag slug to number of directly assigned cards.
+    Roots and children are sorted by their order field.
     """
     counts = counts or {}
     by_slug: dict[str, dict] = {
@@ -96,4 +97,74 @@ def build_tag_tree(tags: list[Tag], counts: dict[str, int] | None = None) -> lis
         else:
             roots.append(node)
 
+    roots.sort(key=lambda n: n["tag"].order)
+    for node in by_slug.values():
+        node["children"].sort(key=lambda n: n["tag"].order)
+
     return roots
+
+
+async def reparent_tag(slug: str, new_parent_slug: str | None) -> None:
+    """Move a tag to a new parent, or promote it to root if new_parent_slug is None.
+
+    Raises ValueError if:
+    - The tag does not exist
+    - The new parent does not exist
+    - The move would create a circular reference
+    - The move would exceed the maximum nesting depth of 2
+    - The tag has children and the new parent is not a root tag
+    """
+    tag = await Tag.find_one(Tag.slug == slug)
+    if tag is None:
+        raise ValueError(f"Tag '{slug}' does not exist.")
+
+    if tag.parent_slug == new_parent_slug:
+        return
+
+    if new_parent_slug is None:
+        tag.parent_slug = None
+        await tag.save()
+        return
+
+    if new_parent_slug == slug:
+        raise ValueError("A tag cannot be its own parent.")
+
+    new_parent = await Tag.find_one(Tag.slug == new_parent_slug)
+    if new_parent is None:
+        raise ValueError(f"Parent tag '{new_parent_slug}' does not exist.")
+
+    if new_parent.parent_slug == slug:
+        raise ValueError("Cannot move a tag into one of its own children.")
+
+    if new_parent.parent_slug is not None:
+        grandparent = await Tag.find_one(Tag.slug == new_parent.parent_slug)
+        if grandparent is not None and grandparent.parent_slug is not None:
+            raise ValueError("Tags only support two levels of nesting.")
+
+    children = await Tag.find(Tag.parent_slug == slug).to_list()
+    if children and new_parent.parent_slug is not None:
+        raise ValueError(
+            "Cannot move a tag with children under a non-root tag."
+        )
+
+    tag.parent_slug = new_parent_slug
+    await tag.save()
+
+
+async def reorder_tags(slugs: list[str], parent_slug: str | None) -> None:
+    """Update the display order of tags within a group.
+
+    slugs is the desired order of tag slugs within the group (root tags when
+    parent_slug is None, or children of the given parent otherwise).
+    Raises ValueError if any slug does not belong to the specified group.
+    """
+    for i, slug in enumerate(slugs):
+        tag = await Tag.find_one(Tag.slug == slug)
+        if tag is None:
+            continue
+        if tag.parent_slug != parent_slug:
+            raise ValueError(
+                f"Tag '{slug}' does not belong to the specified group."
+            )
+        tag.order = i
+        await tag.save()

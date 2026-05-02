@@ -6,6 +6,7 @@ class Tag(Document):
     name: str = Field(max_length=100)
     slug: str
     parent_slug: str | None = None
+    order: int = 0
 
     class Settings:
         name = "tags"

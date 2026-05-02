@@ -274,6 +274,156 @@ async def test_delete_empty_tags_keeps_used_tag(client):
 
 
 # ---------------------------------------------------------------------------
+# PUT /tags/reorder
+# ---------------------------------------------------------------------------
+
+
+async def test_reorder_tags_returns_200(client):
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/tags", data={"name": "Spanish"})
+
+    response = await client.put(
+        "/tags/reorder",
+        json={"slugs": ["spanish", "french"], "parent_slug": None},
+    )
+
+    assert response.status_code == 200
+
+
+async def test_reorder_tags_returns_tag_tree_fragment(client):
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/tags", data={"name": "Spanish"})
+
+    response = await client.put(
+        "/tags/reorder",
+        json={"slugs": ["spanish", "french"], "parent_slug": None},
+    )
+
+    assert "tag-tree" in response.text
+    assert "Spanish" in response.text
+    assert "French" in response.text
+
+
+async def test_reorder_tags_persists_order(client):
+    from models.tag import Tag
+
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/tags", data={"name": "Spanish"})
+
+    await client.put(
+        "/tags/reorder",
+        json={"slugs": ["spanish", "french"], "parent_slug": None},
+    )
+
+    spanish = await Tag.find_one(Tag.slug == "spanish")
+    french = await Tag.find_one(Tag.slug == "french")
+    assert spanish.order == 0
+    assert french.order == 1
+
+
+async def test_reorder_child_tags_returns_200(client):
+    await client.post("/tags", data={"name": "Language"})
+    await client.post("/tags", data={"name": "Spanish", "parent_slug": "language"})
+    await client.post("/tags", data={"name": "French", "parent_slug": "language"})
+
+    response = await client.put(
+        "/tags/reorder",
+        json={"slugs": ["french", "spanish"], "parent_slug": "language"},
+    )
+
+    assert response.status_code == 200
+
+
+async def test_reorder_tags_unauthorized_returns_401(client_no_auth):
+    response = await client_no_auth.put(
+        "/tags/reorder",
+        json={"slugs": ["spanish", "french"], "parent_slug": None},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PUT /tags/{slug}/reparent
+# ---------------------------------------------------------------------------
+
+
+async def test_reparent_tag_to_root_returns_200(client):
+    await client.post("/tags", data={"name": "Spanish"})
+    await client.post(
+        "/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"}
+    )
+
+    response = await client.put(
+        "/tags/mexican-spanish/reparent",
+        json={"new_parent_slug": None},
+    )
+
+    assert response.status_code == 200
+
+
+async def test_reparent_tag_to_root_returns_tag_tree_fragment(client):
+    await client.post("/tags", data={"name": "Spanish"})
+    await client.post(
+        "/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"}
+    )
+
+    response = await client.put(
+        "/tags/mexican-spanish/reparent",
+        json={"new_parent_slug": None},
+    )
+
+    assert "tag-tree" in response.text
+    assert "Mexican Spanish" in response.text
+
+
+async def test_reparent_tag_to_root_persists(client):
+    from models.tag import Tag
+
+    await client.post("/tags", data={"name": "Spanish"})
+    await client.post(
+        "/tags", data={"name": "Mexican Spanish", "parent_slug": "spanish"}
+    )
+
+    await client.put("/tags/mexican-spanish/reparent", json={"new_parent_slug": None})
+
+    tag = await Tag.find_one(Tag.slug == "mexican-spanish")
+    assert tag.parent_slug is None
+
+
+async def test_reparent_tag_adopt_into_parent_persists(client):
+    from models.tag import Tag
+
+    await client.post("/tags", data={"name": "Spanish"})
+    await client.post("/tags", data={"name": "French"})
+
+    await client.put("/tags/french/reparent", json={"new_parent_slug": "spanish"})
+
+    tag = await Tag.find_one(Tag.slug == "french")
+    assert tag.parent_slug == "spanish"
+
+
+async def test_reparent_tag_nonexistent_returns_422(client):
+    response = await client.put(
+        "/tags/nonexistent/reparent",
+        json={"new_parent_slug": None},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_reparent_tag_unauthorized_returns_401(client_no_auth):
+    response = await client_no_auth.put(
+        "/tags/spanish/reparent",
+        json={"new_parent_slug": None},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # PUT /cards/{card_id}
 # ---------------------------------------------------------------------------
 
@@ -491,7 +641,9 @@ async def test_update_card_synthesised_filename_replaces_existing_audio(client):
     assert refreshed.audio_filename == "new_synth.wav"
 
 
-async def test_update_card_synthesised_filename_no_prior_audio_stores_without_delete(client):
+async def test_update_card_synthesised_filename_no_prior_audio_stores_without_delete(
+    client,
+):
     """synthesised_audio_filename is stored on a card that had no audio; delete_audio not called."""
     await client.post("/cards", data={"phrase": "Test"})
     card = await Card.find_one()
@@ -516,9 +668,7 @@ async def test_update_card_with_translation_persists(client):
     await client.post("/cards", data={"phrase": "Salut"})
     card = await Card.find_one()
 
-    await client.put(
-        f"/cards/{card.id}", data={"phrase": "Salut", "translation": "Hi"}
-    )
+    await client.put(f"/cards/{card.id}", data={"phrase": "Salut", "translation": "Hi"})
 
     refreshed = await Card.get(card.id)
     assert refreshed.translation == "Hi"
@@ -540,7 +690,9 @@ async def test_synthesise_card_audio_returns_filename_json(client):
             new_callable=AsyncMock,
             return_value="abc123.wav",
         ):
-            response = await client.post("/cards/synthesise", data={"phrase": "Dia duit"})
+            response = await client.post(
+                "/cards/synthesise", data={"phrase": "Dia duit"}
+            )
 
     assert response.status_code == 200
     assert response.json() == {"filename": "abc123.wav"}
