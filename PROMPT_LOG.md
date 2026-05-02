@@ -37,6 +37,35 @@ Entry template:
 
 ---
 
+### Entry 053 — 2026-05-02
+**Section:** Tests / ABAIR integration
+
+**Prompt:** Based on the audit, generate all the required tests
+
+**What was generated:** Created `tests/test_abair_service.py` with 3 tests (happy path, HTTPStatusError propagation, query params); added 3 `save_audio_bytes` tests to `test_audio_service.py`; added 10 tests to `test_views.py` covering `POST /cards/synthesise` (success, empty/whitespace 422, ABAIR 502, generic 502, unauth 401) and the `synthesised_audio_filename` branches in both `POST /cards` and `PUT /cards/{id}`. All 170 tests pass.
+
+---
+
+### Entry 052 — 2026-05-02
+**Section:** Tests / ABAIR integration
+
+**Prompt:** Based on the last changes, make a list of the missing tests
+
+**What was generated:** Audit of 15 missing test cases across three changed files: 3 for `abair_service.synthesise`, 3 for `audio_service.save_audio_bytes`, 5 for the new `POST /cards/synthesise` endpoint, 2 for the `synthesised_audio_filename` branch in `POST /cards`, and 2 for the same branch in `PUT /cards/{card_id}`.
+
+---
+
+### Entry 051 — 2026-05-02
+**Section:** Audio / ABAIR integration
+
+**Prompt:** Is there a way to automate the process of getting audio from this website? https://abair.ie/synthesis  I would want a button that I can click when I create a card to get the audio → Implement the audio from abair
+
+**What was generated:** Added a "Generate with ABAIR" button to both the new card and edit card modals. Clicking it calls a new `POST /cards/synthesise` route, which POSTs the card phrase to the public ABAIR Irish TTS API (`api.abair.ie/v3/synthesis`), decodes the base64 WAV audio from the JSON response, saves it to disk via a new `save_audio_bytes` helper, and returns the filename. The form then submits the pre-generated filename via a hidden field (`synthesised_audio_filename`) which is accepted by the `create_card` and `update_card` endpoints.
+
+**What I learned:** The agent was not able to find the ABAIR API, I had to help it find the right endpoint
+
+---
+
 ### Entry 050 — 2026-05-02
 **Section:** Static assets / cache busting
 

@@ -6,7 +6,7 @@ beanie_init fixture in conftest.py has already initialised Beanie
 against a mongomock_motor client before each test function runs.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest_asyncio
@@ -428,6 +428,89 @@ async def test_create_card_whitespace_only_translation_stored_as_none(client):
     assert card.translation is None
 
 
+async def test_create_card_with_synthesised_filename_stores_audio(client):
+    """synthesised_audio_filename is stored on the card when no file is uploaded."""
+    response = await client.post(
+        "/cards",
+        data={"phrase": "Conas atá tú", "synthesised_audio_filename": "synth_abc.wav"},
+    )
+
+    assert response.status_code == 200
+    card = await Card.find_one()
+    assert card is not None
+    assert card.audio_filename == "synth_abc.wav"
+
+
+async def test_create_card_real_upload_takes_priority_over_synthesised_filename(client):
+    """When both a file upload and synthesised_audio_filename are provided, the upload wins."""
+    with patch(
+        "services.audio_service.save_audio",
+        new_callable=AsyncMock,
+        return_value="uploaded.mp3",
+    ):
+        response = await client.post(
+            "/cards",
+            data={"phrase": "Slán", "synthesised_audio_filename": "synth_abc.wav"},
+            files={"audio": ("clip.mp3", b"bytes", "audio/mpeg")},
+        )
+
+    assert response.status_code == 200
+    card = await Card.find_one()
+    assert card is not None
+    assert card.audio_filename == "uploaded.mp3"
+
+
+async def test_update_card_synthesised_filename_replaces_existing_audio(client):
+    """synthesised_audio_filename deletes the old audio file and stores the new name."""
+    with patch(
+        "services.audio_service.save_audio",
+        new_callable=AsyncMock,
+        return_value="old.mp3",
+    ):
+        with patch("services.audio_service.delete_audio", new_callable=AsyncMock):
+            await client.post(
+                "/cards",
+                data={"phrase": "Test"},
+                files={"audio": ("old.mp3", b"bytes", "audio/mpeg")},
+            )
+
+    card = await Card.find_one()
+    assert card.audio_filename == "old.mp3"
+
+    with patch(
+        "services.audio_service.delete_audio", new_callable=AsyncMock
+    ) as mock_del:
+        response = await client.put(
+            f"/cards/{card.id}",
+            data={"phrase": "Test", "synthesised_audio_filename": "new_synth.wav"},
+        )
+
+    assert response.status_code == 200
+    mock_del.assert_awaited_once_with("old.mp3")
+    refreshed = await Card.get(card.id)
+    assert refreshed.audio_filename == "new_synth.wav"
+
+
+async def test_update_card_synthesised_filename_no_prior_audio_stores_without_delete(client):
+    """synthesised_audio_filename is stored on a card that had no audio; delete_audio not called."""
+    await client.post("/cards", data={"phrase": "Test"})
+    card = await Card.find_one()
+    assert card.audio_filename is None
+
+    with patch(
+        "services.audio_service.delete_audio", new_callable=AsyncMock
+    ) as mock_del:
+        response = await client.put(
+            f"/cards/{card.id}",
+            data={"phrase": "Test", "synthesised_audio_filename": "synth_new.wav"},
+        )
+
+    assert response.status_code == 200
+    mock_del.assert_not_awaited()
+    refreshed = await Card.get(card.id)
+    assert refreshed.audio_filename == "synth_new.wav"
+
+
 async def test_update_card_with_translation_persists(client):
     """Translation submitted on update is stored on the card."""
     await client.post("/cards", data={"phrase": "Salut"})
@@ -439,6 +522,74 @@ async def test_update_card_with_translation_persists(client):
 
     refreshed = await Card.get(card.id)
     assert refreshed.translation == "Hi"
+
+
+# ---------------------------------------------------------------------------
+# POST /cards/synthesise
+# ---------------------------------------------------------------------------
+
+
+async def test_synthesise_card_audio_returns_filename_json(client):
+    with patch(
+        "services.abair_service.synthesise",
+        new_callable=AsyncMock,
+        return_value=b"fake wav",
+    ):
+        with patch(
+            "services.audio_service.save_audio_bytes",
+            new_callable=AsyncMock,
+            return_value="abc123.wav",
+        ):
+            response = await client.post("/cards/synthesise", data={"phrase": "Dia duit"})
+
+    assert response.status_code == 200
+    assert response.json() == {"filename": "abc123.wav"}
+
+
+async def test_synthesise_card_audio_empty_phrase_returns_422(client):
+    response = await client.post("/cards/synthesise", data={"phrase": ""})
+
+    assert response.status_code == 422
+
+
+async def test_synthesise_card_audio_whitespace_phrase_returns_422(client):
+    response = await client.post("/cards/synthesise", data={"phrase": "   "})
+
+    assert response.status_code == 422
+
+
+async def test_synthesise_card_audio_abair_http_error_returns_502(client):
+    with patch(
+        "services.abair_service.synthesise",
+        new_callable=AsyncMock,
+        side_effect=httpx.HTTPStatusError(
+            "503", request=MagicMock(), response=MagicMock(status_code=503)
+        ),
+    ):
+        response = await client.post("/cards/synthesise", data={"phrase": "Dia duit"})
+
+    assert response.status_code == 502
+
+
+async def test_synthesise_card_audio_generic_exception_returns_502(client):
+    with patch(
+        "services.abair_service.synthesise",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("network failure"),
+    ):
+        response = await client.post("/cards/synthesise", data={"phrase": "Dia duit"})
+
+    assert response.status_code == 502
+
+
+async def test_synthesise_card_audio_unauthorized_returns_401(client_no_auth):
+    response = await client_no_auth.post(
+        "/cards/synthesise",
+        data={"phrase": "Dia duit"},
+        headers={"HX-Request": "true"},
+    )
+
+    assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------

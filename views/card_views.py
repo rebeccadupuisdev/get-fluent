@@ -1,11 +1,12 @@
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import ValidationError
 
 from auth.deps import get_optional_auth, require_auth
-from services import audio_service, card_service, tag_service
+from services import abair_service, audio_service, card_service, tag_service
 from views.deps import templates, with_csrf
 
 router = APIRouter()
@@ -36,6 +37,24 @@ async def index(request: Request) -> HTMLResponse:
     )
 
 
+@router.post("/cards/synthesise", response_class=JSONResponse)
+async def synthesise_card_audio(
+    _email: Annotated[str, Depends(require_auth)],
+    phrase: Annotated[str, Form()],
+) -> JSONResponse:
+    """Synthesise Irish TTS audio for the given phrase via ABAIR and save to disk."""
+    if not phrase.strip():
+        raise HTTPException(422, "Phrase must not be empty.")
+    try:
+        audio_bytes = await abair_service.synthesise(phrase.strip())
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"ABAIR returned {exc.response.status_code}")
+    except Exception:
+        raise HTTPException(502, "Audio synthesis failed")
+    filename = await audio_service.save_audio_bytes(audio_bytes, ".wav")
+    return JSONResponse({"filename": filename})
+
+
 @router.post("/cards", response_class=HTMLResponse)
 async def create_card(
     request: Request,
@@ -44,11 +63,14 @@ async def create_card(
     translation: Annotated[str, Form()] = "",
     tag_slugs: Annotated[list[str], Form()] = [],
     audio: Annotated[UploadFile | None, File()] = None,
+    synthesised_audio_filename: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     """Create a new card and return the card item HTML fragment."""
     audio_filename: str | None = None
     if audio and audio.filename:
         audio_filename = await audio_service.save_audio(audio)
+    elif synthesised_audio_filename:
+        audio_filename = synthesised_audio_filename
 
     try:
         card = await card_service.create_card(
@@ -109,6 +131,7 @@ async def update_card(
     tag_slugs: Annotated[list[str], Form()] = [],
     audio: Annotated[UploadFile | None, File()] = None,
     remove_audio: Annotated[str, Form()] = "false",
+    synthesised_audio_filename: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     """Update a card's phrase, tags, and audio; return the refreshed card list."""
     existing = await card_service.get_card(card_id)
@@ -119,6 +142,10 @@ async def update_card(
         if current_audio:
             await audio_service.delete_audio(current_audio)
         audio_filename: str | None = new_filename
+    elif synthesised_audio_filename:
+        if current_audio:
+            await audio_service.delete_audio(current_audio)
+        audio_filename = synthesised_audio_filename
     elif remove_audio == "true":
         if current_audio:
             await audio_service.delete_audio(current_audio)

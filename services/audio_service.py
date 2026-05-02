@@ -23,6 +23,16 @@ async def save_audio(file: UploadFile) -> str:
     return filename
 
 
+async def save_audio_bytes(data: bytes, suffix: str = ".wav") -> str:
+    """Write raw audio bytes to AUDIO_DIR with a UUID filename; return the filename."""
+    safe_suffix = suffix if suffix in ALLOWED_AUDIO_EXTENSIONS else ".bin"
+    filename = f"{uuid.uuid4().hex}{safe_suffix}"
+    dest = AUDIO_DIR / filename
+    async with aiofiles.open(dest, "wb") as out:
+        await out.write(data)
+    return filename
+
+
 async def delete_audio(filename: str) -> None:
     """Delete an audio file from AUDIO_DIR if it exists.
     Rejects path traversal (e.g. ../../../etc/passwd).

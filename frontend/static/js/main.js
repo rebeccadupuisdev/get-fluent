@@ -68,8 +68,7 @@ function openCardModal() {
   const form = document.getElementById('card-modal-form');
   form.reset();
   // Reset audio zone
-  document.getElementById('audio-upload-zone').classList.remove('hidden');
-  document.getElementById('audio-attached').classList.add('hidden');
+  showNewCardAudioState('upload');
   // Reset custom tag checkbox visuals
   form.querySelectorAll('.modal-tag-row').forEach(row => row.classList.remove('bg-teal-600/15'));
   form.querySelectorAll('.modal-tag-checkbox').forEach(cb => {
@@ -90,18 +89,58 @@ function closeCardModal() {
 }
 
 // ── Card modal — audio ───────────────────────────────────
+function showNewCardAudioState(state) {
+  document.getElementById('audio-upload-zone').classList.toggle('hidden', state !== 'upload');
+  document.getElementById('modal-abair-btn').classList.toggle('hidden', state !== 'upload');
+  document.getElementById('audio-attached').classList.toggle('hidden', state !== 'attached');
+  document.getElementById('modal-abair-generated').classList.toggle('hidden', state !== 'generated');
+}
+
 function handleModalAudio(input) {
   const file = input.files[0];
   if (!file) return;
+  document.getElementById('modal-synthesised-filename').value = '';
   document.getElementById('audio-filename-display').textContent = file.name;
-  document.getElementById('audio-upload-zone').classList.add('hidden');
-  document.getElementById('audio-attached').classList.remove('hidden');
+  showNewCardAudioState('attached');
 }
 
 function removeModalAudio() {
   document.getElementById('modal-audio-input').value = '';
-  document.getElementById('audio-upload-zone').classList.remove('hidden');
-  document.getElementById('audio-attached').classList.add('hidden');
+  showNewCardAudioState('upload');
+}
+
+function removeModalAbairAudio() {
+  document.getElementById('modal-synthesised-filename').value = '';
+  showNewCardAudioState('upload');
+}
+
+async function synthesiseModalAudio() {
+  const phrase = document.querySelector('#card-modal-form textarea[name="phrase"]')?.value?.trim();
+  if (!phrase) return;
+  const btn = document.getElementById('modal-abair-btn');
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const fd = new FormData();
+    fd.append('phrase', phrase);
+    const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const res = await fetch('/cards/synthesise', {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRF-Token': token },
+    });
+    if (!res.ok) throw new Error('synthesis failed');
+    const data = await res.json();
+    document.getElementById('modal-audio-input').value = '';
+    document.getElementById('modal-synthesised-filename').value = data.filename;
+    showNewCardAudioState('generated');
+  } catch {
+    // fail silently — button re-enabled below
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
+  }
 }
 
 // ── Card modal — tag checkboxes ──────────────────────────
@@ -161,6 +200,7 @@ function openEditModal(btn) {
   stopEditAudio();
   document.getElementById('edit-remove-audio').value = 'false';
   document.getElementById('edit-audio-input').value = '';
+  document.getElementById('edit-synthesised-filename').value = '';
 
   if (audio) {
     _editExistingAudioFilename = audio;
@@ -187,7 +227,9 @@ function closeEditModal() {
 function showEditAudioState(state) {
   document.getElementById('edit-audio-existing').classList.toggle('hidden', state !== 'existing');
   document.getElementById('edit-audio-upload-zone').classList.toggle('hidden', state !== 'upload');
+  document.getElementById('edit-abair-btn').classList.toggle('hidden', state !== 'upload');
   document.getElementById('edit-audio-new').classList.toggle('hidden', state !== 'new');
+  document.getElementById('edit-abair-generated').classList.toggle('hidden', state !== 'abair');
 }
 
 function setupEditAudioPlayer(url) {
@@ -264,6 +306,7 @@ function handleEditAudioNew(input) {
   const file = input.files[0];
   if (!file) return;
   stopEditAudio();
+  document.getElementById('edit-synthesised-filename').value = '';
   document.getElementById('edit-audio-new-name').textContent = file.name;
   showEditAudioState('new');
 }
@@ -277,6 +320,40 @@ function removeEditNewAudio() {
   } else {
     document.getElementById('edit-remove-audio').value = 'false';
     showEditAudioState('upload');
+  }
+}
+
+function removeEditAbairAudio() {
+  document.getElementById('edit-synthesised-filename').value = '';
+  showEditAudioState('upload');
+}
+
+async function synthesiseEditAudio() {
+  const phrase = document.getElementById('edit-phrase')?.value?.trim();
+  if (!phrase) return;
+  const btn = document.getElementById('edit-abair-btn');
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const fd = new FormData();
+    fd.append('phrase', phrase);
+    const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const res = await fetch('/cards/synthesise', {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRF-Token': token },
+    });
+    if (!res.ok) throw new Error('synthesis failed');
+    const data = await res.json();
+    document.getElementById('edit-audio-input').value = '';
+    document.getElementById('edit-synthesised-filename').value = data.filename;
+    showEditAudioState('abair');
+  } catch {
+    // fail silently — button re-enabled below
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHTML;
   }
 }
 

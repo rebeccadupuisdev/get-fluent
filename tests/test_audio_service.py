@@ -91,3 +91,30 @@ async def test_delete_audio_rejects_path_traversal(audio_dir: Path):
     """Path traversal (e.g. ../../../etc/passwd) raises ValueError."""
     with pytest.raises(ValueError, match="path traversal"):
         await audio_service.delete_audio("../../../etc/passwd")
+
+
+# ---------------------------------------------------------------------------
+# save_audio_bytes
+# ---------------------------------------------------------------------------
+
+
+async def test_save_audio_bytes_writes_data_and_returns_wav_filename(audio_dir: Path):
+    data = b"raw wav bytes"
+
+    filename = await audio_service.save_audio_bytes(data, ".wav")
+
+    assert filename.endswith(".wav")
+    assert (audio_dir / filename).read_bytes() == data
+
+
+async def test_save_audio_bytes_generates_unique_filenames(audio_dir: Path):
+    filename_a = await audio_service.save_audio_bytes(b"audio a", ".wav")
+    filename_b = await audio_service.save_audio_bytes(b"audio b", ".wav")
+
+    assert filename_a != filename_b
+
+
+async def test_save_audio_bytes_disallowed_suffix_uses_bin(audio_dir: Path):
+    filename = await audio_service.save_audio_bytes(b"data", ".html")
+
+    assert filename.endswith(".bin")
