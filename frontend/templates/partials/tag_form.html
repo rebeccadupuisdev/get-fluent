@@ -1,12 +1,8 @@
 {# ── POST /tags response ─────────────────────────────────────────────────────
-   1. OOB swap: refreshes the sidebar tag tree in place.
+   1. OOB swap: refreshes the sidebar tag tree + card modal tag lists in place.
    2. Main swap: replaces #modal-form-content with a fresh form (updated parent list).
    The form's hx-on::after-request JS closes the modal before the swap occurs. #}
 
-{% include "partials/tag_tree.html" %}
-
-{% include "partials/card_modal_tags.html" %}
-
-{% include "partials/edit_card_modal_tags.html" %}
+{% include "partials/tag_sync_oob.html" %}
 
 {% include "partials/tag_modal_form.html" %}

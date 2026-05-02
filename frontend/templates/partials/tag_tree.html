@@ -1,11 +1,12 @@
 {% macro render_node(node, depth=0) %}
-<li class="group" draggable="false" data-slug="{{ node.tag.slug }}" data-parent-slug="{{ node.tag.parent_slug or '' }}">
+<li class="group" draggable="false" data-slug="{{ node.tag.slug }}" data-parent-slug="{{ node.tag.parent_slug or '' }}"
+    data-accepts-children="{{ 'true' if depth < 2 else 'false' }}">
   {% if node.children %}
   {# Expandable tag #}
   <div class="tag-item">
     <div class="flex items-center">
       <span class="drag-handle cursor-grab flex items-center justify-center shrink-0 text-stone-500 hover:text-stone-300 rounded-l-md transition-colors"
-            title="Drag to reorder">
+            title="Drag: edges reorder, center nests under tag">
         <svg class="w-4 h-4" viewBox="0 0 12 20" fill="currentColor">
           <circle cx="3.5" cy="3" r="1.8"/><circle cx="3.5" cy="10" r="1.8"/><circle cx="3.5" cy="17" r="1.8"/>
           <circle cx="9" cy="3" r="1.8"/><circle cx="9" cy="10" r="1.8"/><circle cx="9" cy="17" r="1.8"/>
@@ -42,7 +43,7 @@
   {# Root leaf tag #}
   <div class="flex items-center">
     <span class="drag-handle cursor-grab flex items-center justify-center shrink-0 text-stone-500 hover:text-stone-300 rounded-l-md transition-colors"
-          title="Drag to reorder">
+          title="Drag: edges reorder, center nests under tag">
       <svg class="w-4 h-4" viewBox="0 0 12 20" fill="currentColor">
         <circle cx="3.5" cy="3" r="1.8"/><circle cx="3.5" cy="10" r="1.8"/><circle cx="3.5" cy="17" r="1.8"/>
         <circle cx="9" cy="3" r="1.8"/><circle cx="9" cy="10" r="1.8"/><circle cx="9" cy="17" r="1.8"/>
@@ -69,7 +70,7 @@
   {# Nested leaf tag #}
   <div class="flex items-center">
     <span class="drag-handle cursor-grab flex items-center justify-center shrink-0 text-stone-500 hover:text-stone-300 rounded-l-md transition-colors"
-          title="Drag to reorder">
+          title="Drag: edges reorder, center nests under tag">
       <svg class="w-4 h-4" viewBox="0 0 12 20" fill="currentColor">
         <circle cx="3.5" cy="3" r="1.8"/><circle cx="3.5" cy="10" r="1.8"/><circle cx="3.5" cy="17" r="1.8"/>
         <circle cx="9" cy="3" r="1.8"/><circle cx="9" cy="10" r="1.8"/><circle cx="9" cy="17" r="1.8"/>
@@ -97,6 +98,11 @@
    the OOB fragment returned by POST /tags and DELETE /tags/empty (where HTMX
    uses it to update the sidebar tag tree without touching the main swap target). #}
 <ul id="tag-tree" hx-swap-oob="true" class="space-y-1">
+  <li id="tag-reorder-root-drop"
+      class="hidden list-none -mx-1 mb-1 rounded-lg border border-dashed border-teal-600/35 bg-teal-950/40 px-2 py-2 text-center font-mono text-[11px] leading-snug text-teal-500/90 select-none"
+      data-root-drop="true">
+    Drop here to move to top level
+  </li>
   {% if tag_tree %}
     {% for node in tag_tree %}{{ render_node(node) }}{% endfor %}
   {% else %}

@@ -1,0 +1,21 @@
+{# Parent dropdown for New Tag modal. OOB id lets reorder/reparent refresh options without a full page reload. #}
+<div id="tag-modal-parent-select" hx-swap-oob="true" class="relative">
+  <select name="parent_slug"
+          id="parent-select"
+          onchange="updateParentHint(this)"
+          class="w-full appearance-none font-mono text-sm bg-stone-800 border border-stone-700
+                 rounded-lg px-3 py-2.5 text-stone-300 pr-8
+                 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30
+                 transition-colors">
+    <option value="">None — root tag</option>
+    {% for tag in tags %}
+    <option value="{{ tag.slug }}">{{ tag.name }}</option>
+    {% endfor %}
+  </select>
+  <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-500">
+    <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+         stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 6l4 4 4-4"/>
+    </svg>
+  </div>
+</div>

@@ -30,6 +30,21 @@ function closeSidebar() {
 window.toggleSidebar = toggleSidebar;
 window.closeSidebar = closeSidebar;
 
+/** Swap elements marked hx-swap-oob from an HTML string (PUT /tags/reorder, reparent). */
+function applyTagSyncFragments(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('[hx-swap-oob]').forEach((incoming) => {
+    if (!incoming.id) return;
+    const existing = document.getElementById(incoming.id);
+    if (existing) {
+      existing.replaceWith(incoming);
+    }
+  });
+  const parentSel = document.getElementById('parent-select');
+  if (parentSel) updateParentHint(parentSel);
+  initTagDragDrop();
+}
+
 // ── Tag modal ────────────────────────────────────────────
 function openTagModal() {
   document.getElementById('tag-modal').classList.remove('hidden');
@@ -630,7 +645,10 @@ function initSwipeCardsIfNeeded() {
   }
 }
 document.addEventListener('DOMContentLoaded', initSwipeCardsIfNeeded);
-document.addEventListener('htmx:afterSettle', initSwipeCardsIfNeeded);
+// Only re-init when the card list DOM is replaced — other swaps (e.g. tag tree) would stack duplicate touch listeners.
+document.addEventListener('htmx:afterSettle', function (evt) {
+  if (evt.detail?.target?.id === 'card-list') initSwipeCardsIfNeeded();
+});
 
 // ── Audio playback ──────────────────────────────────────
 // Use Web Audio API to avoid Chrome's ~10 WebMediaPlayer limit on HTMLAudioElement.
@@ -718,7 +736,9 @@ function toggleReorderMode(btn) {
 
   btn.classList.toggle('is-reordering', _reorderModeActive);
   const label = btn.querySelector('.reorder-btn-label');
-  if (label) label.textContent = _reorderModeActive ? 'Done reordering' : 'Reorder tags';
+  if (label) {
+    label.textContent = _reorderModeActive ? 'Done reordering' : 'Reorder tags';
+  }
 
   if (!_reorderModeActive) {
     htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
@@ -746,11 +766,59 @@ function initTagDragDrop() {
 
   let draggedEl = null;
 
+  function tagRowEl(li) {
+    const btn = li.querySelector('button.tag-filter-btn');
+    return btn ? btn.parentElement : li;
+  }
+
   function clearDropIndicators() {
     tagTree.querySelectorAll('li[data-slug]').forEach((el) => {
       el.style.borderTop = '';
       el.style.borderBottom = '';
+      el.classList.remove('tag-drop-nest-hint');
     });
+    document.getElementById('tag-reorder-root-drop')?.classList.remove('is-root-drop-active');
+  }
+
+  /** @returns {{ type: 'nest' } | { type: 'reorder', insertBefore: boolean } | null} */
+  function getDropIntent(e, target, dragged) {
+    const row = tagRowEl(target);
+    const rect = row.getBoundingClientRect();
+    const w = rect.width || 1;
+    const h = rect.height || 1;
+    const xR = (e.clientX - rect.left) / w;
+    const yR = (e.clientY - rect.top) / h;
+    const sameGroup = target.dataset.parentSlug === dragged.dataset.parentSlug;
+    const canNest = target.dataset.acceptsChildren === 'true';
+    // Narrow center: make "drop under this tag" deliberate; edges favour reorder among siblings.
+    const inNestZone = xR >= 0.36 && xR <= 0.64 && yR >= 0.22 && yR <= 0.78;
+    if (canNest && inNestZone && !dragged.contains(target)) {
+      const newParent = target.dataset.slug;
+      const alreadyChildOfTarget = dragged.dataset.parentSlug === newParent;
+      const nestIntoDifferentBranch =
+        dragged.dataset.slug !== newParent && !alreadyChildOfTarget;
+      if (nestIntoDifferentBranch) {
+        return { type: 'nest' };
+      }
+    }
+    if (sameGroup) {
+      return { type: 'reorder', insertBefore: e.clientY < rect.top + h / 2 };
+    }
+    return null;
+  }
+
+  async function swapTagTreeAfterReparent(slug, newParentSlug) {
+    const res = await fetch(`/tags/${encodeURIComponent(slug)}/reparent`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+      body: JSON.stringify({ new_parent_slug: newParentSlug }),
+    });
+    if (!res.ok) {
+      htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
+      return;
+    }
+    const html = await res.text();
+    applyTagSyncFragments(html);
   }
 
   tagTree.addEventListener('dragstart', (e) => {
@@ -799,40 +867,100 @@ function initTagDragDrop() {
   tagTree.addEventListener('dragover', (e) => {
     e.preventDefault();
     if (!draggedEl) return;
+
+    const rootDrop = e.target.closest('#tag-reorder-root-drop');
+    if (rootDrop) {
+      clearDropIndicators();
+      if (draggedEl.dataset.parentSlug) {
+        rootDrop.classList.add('is-root-drop-active');
+        e.dataTransfer.dropEffect = 'move';
+      } else {
+        e.dataTransfer.dropEffect = 'none';
+      }
+      return;
+    }
+
     const target = e.target.closest('li[data-slug]');
-    if (!target || target === draggedEl) return;
-    if (target.dataset.parentSlug !== draggedEl.dataset.parentSlug) return;
-    e.dataTransfer.dropEffect = 'move';
+    if (!target || target === draggedEl || draggedEl.contains(target)) {
+      clearDropIndicators();
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    const intent = getDropIntent(e, target, draggedEl);
     clearDropIndicators();
-    const rect = target.getBoundingClientRect();
-    if (e.clientY < rect.top + rect.height / 2) {
-      target.style.borderTop = '2px solid rgb(20 184 166)';
-    } else {
-      target.style.borderBottom = '2px solid rgb(20 184 166)';
+    if (!intent) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+    if (intent.type === 'nest') {
+      target.classList.add('tag-drop-nest-hint');
+      return;
+    }
+    if (intent.type === 'reorder') {
+      const rect = tagRowEl(target).getBoundingClientRect();
+      if (intent.insertBefore) {
+        target.style.borderTop = '2px solid rgb(20 184 166)';
+      } else {
+        target.style.borderBottom = '2px solid rgb(20 184 166)';
+      }
     }
   }, { signal });
 
   tagTree.addEventListener('dragleave', (e) => {
+    const rootDrop = e.target.closest('#tag-reorder-root-drop');
+    if (rootDrop && !rootDrop.contains(e.relatedTarget)) {
+      rootDrop.classList.remove('is-root-drop-active');
+    }
     const target = e.target.closest('li[data-slug]');
     if (target && !target.contains(e.relatedTarget)) {
       target.style.borderTop = '';
       target.style.borderBottom = '';
+      target.classList.remove('tag-drop-nest-hint');
     }
   }, { signal });
 
-  tagTree.addEventListener('drop', (e) => {
+  tagTree.addEventListener('drop', async (e) => {
     e.preventDefault();
     if (!draggedEl) return;
+
+    const rootDrop = e.target.closest('#tag-reorder-root-drop');
+    if (rootDrop) {
+      clearDropIndicators();
+      draggedEl.classList.remove('opacity-40');
+      const slug = draggedEl.dataset.slug;
+      const hadParent = Boolean(draggedEl.dataset.parentSlug);
+      draggedEl = null;
+      if (hadParent) await swapTagTreeAfterReparent(slug, null);
+      return;
+    }
+
     const target = e.target.closest('li[data-slug]');
-    if (!target || target === draggedEl) return;
-    if (target.dataset.parentSlug !== draggedEl.dataset.parentSlug) return;
+    if (!target || target === draggedEl || draggedEl.contains(target)) {
+      clearDropIndicators();
+      return;
+    }
 
-    const rect = target.getBoundingClientRect();
-    const insertBefore = e.clientY < rect.top + rect.height / 2;
-
+    const intent = getDropIntent(e, target, draggedEl);
     clearDropIndicators();
     draggedEl.classList.remove('opacity-40');
 
+    if (intent?.type === 'nest') {
+      const slug = draggedEl.dataset.slug;
+      const newParent = target.dataset.slug;
+      draggedEl = null;
+      await swapTagTreeAfterReparent(slug, newParent);
+      return;
+    }
+
+    if (!intent || intent.type !== 'reorder') {
+      draggedEl = null;
+      return;
+    }
+
+    const { insertBefore } = intent;
     const parent = target.parentElement;
     if (insertBefore) {
       parent.insertBefore(draggedEl, target);
@@ -847,13 +975,17 @@ function initTagDragDrop() {
 
     draggedEl = null;
 
-    fetch('/tags/reorder', {
+    const res = await fetch('/tags/reorder', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
       body: JSON.stringify({ slugs, parent_slug: parentSlug }),
-    }).catch(() => {
-      htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
     });
+    if (!res.ok) {
+      htmx.ajax('GET', '/tags', { target: '#tag-tree', swap: 'outerHTML' });
+      return;
+    }
+    const html = await res.text();
+    applyTagSyncFragments(html);
   }, { signal });
 }
 

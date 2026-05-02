@@ -13,6 +13,7 @@ import pytest_asyncio
 
 from main import app
 from models.card import Card
+from models.tag import Tag
 
 
 @pytest_asyncio.fixture
@@ -240,6 +241,19 @@ async def test_create_tag_whitespace_only_name_returns_error_message(client):
     assert "empty" in response.text.lower()
 
 
+async def test_create_tag_name_too_long_returns_form_tag_error_banner(client):
+    """Tag name exceeding 100 characters returns modal form with ValidationError banner."""
+    name_101 = "y" * 101
+    response = await client.post("/tags", data={"name": name_101})
+
+    assert response.status_code == 200
+    assert 'id="tag-error"' in response.text
+    assert ("too long" in response.text.lower() or "characters" in response.text.lower())
+
+    tag = await Tag.find_one(Tag.name == name_101)
+    assert tag is None
+
+
 async def test_delete_empty_tags_no_tags_returns_200(client):
     """DELETE /tags/empty with no tags returns 200 (idempotent)."""
     response = await client.delete("/tags/empty")
@@ -300,6 +314,7 @@ async def test_reorder_tags_returns_tag_tree_fragment(client):
     )
 
     assert "tag-tree" in response.text
+    assert "tag-modal-parent-select" in response.text
     assert "Spanish" in response.text
     assert "French" in response.text
 
@@ -344,6 +359,24 @@ async def test_reorder_tags_unauthorized_returns_401(client_no_auth):
     assert response.status_code == 401
 
 
+async def test_reorder_tags_malformed_json_returns_422(client):
+    """Invalid JSON body is rejected before tag logic runs."""
+    response = await client.put(
+        "/tags/reorder",
+        content=b"not-valid-json{{{",
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422
+
+
+async def test_reorder_tags_missing_slugs_returns_422(client):
+    """Reorder body must include ``slugs`` (Pydantic validation)."""
+    response = await client.put("/tags/reorder", json={"parent_slug": None})
+
+    assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # PUT /tags/{slug}/reparent
 # ---------------------------------------------------------------------------
@@ -375,6 +408,7 @@ async def test_reparent_tag_to_root_returns_tag_tree_fragment(client):
     )
 
     assert "tag-tree" in response.text
+    assert "tag-modal-parent-select" in response.text
     assert "Mexican Spanish" in response.text
 
 
@@ -806,6 +840,54 @@ async def test_delete_card_unauthorized_returns_401(client_no_auth):
         headers={"HX-Request": "true"},
     )
     assert response.status_code == 401
+
+
+async def test_update_card_unauthorized_returns_401(client):
+    """PUT /cards/{id} without auth returns JSON 401 + HX-Redirect for HTMX."""
+
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+    assert card is not None
+
+    from auth.deps import require_auth
+    from main import app as fastapi_app
+
+    prev_auth = fastapi_app.dependency_overrides.pop(require_auth)
+    try:
+        response = await client.put(
+            f"/cards/{card.id}",
+            data={"phrase": "Hacked"},
+            headers={"HX-Request": "true"},
+        )
+    finally:
+        fastapi_app.dependency_overrides[require_auth] = prev_auth
+
+    assert response.status_code == 401
+    assert response.headers.get("HX-Redirect") == "/auth/login"
+
+
+async def test_update_card_unauthorized_non_htmx_redirects_to_login(client):
+    """PUT /cards/{id} without auth and without HX-Request returns 302 to login."""
+
+    await client.post("/cards", data={"phrase": "Salut"})
+    card = await Card.find_one()
+    assert card is not None
+
+    from auth.deps import require_auth
+    from main import app as fastapi_app
+
+    prev_auth = fastapi_app.dependency_overrides.pop(require_auth)
+    try:
+        response = await client.put(
+            f"/cards/{card.id}",
+            data={"phrase": "Changed"},
+            follow_redirects=False,
+        )
+    finally:
+        fastapi_app.dependency_overrides[require_auth] = prev_auth
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/auth/login"
 
 
 async def test_create_tag_unauthorized_returns_401(client_no_auth):

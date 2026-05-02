@@ -44,26 +44,7 @@
           Parent Tag
           <span class="text-stone-700 normal-case tracking-normal font-mono">(optional)</span>
         </label>
-        <div class="relative">
-          <select name="parent_slug"
-                  id="parent-select"
-                  onchange="updateParentHint(this)"
-                  class="w-full appearance-none font-mono text-sm bg-stone-800 border border-stone-700
-                         rounded-lg px-3 py-2.5 text-stone-300 pr-8
-                         focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30
-                         transition-colors">
-            <option value="">None — root tag</option>
-            {% for tag in tags %}
-            <option value="{{ tag.slug }}">{{ tag.name }}</option>
-            {% endfor %}
-          </select>
-          <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-stone-500">
-            <svg class="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 6l4 4 4-4"/>
-            </svg>
-          </div>
-        </div>
+        {% include "partials/tag_modal_parent_select.html" %}
         <p id="parent-hint" class="hidden mt-2 font-mono text-xs text-stone-600">
           This tag will appear nested under
           <span id="parent-hint-name" class="text-teal-600"></span>

@@ -37,6 +37,70 @@ Entry template:
 
 ---
 
+### Entry 060 — 2026-05-02
+**Section:** Tests (`test_email_service`, `test_views`)
+
+**Persona:** test.generate
+
+**Prompt:** Five tests failed after audit follow-ups; diagnose and fix.
+
+**What was generated:** Restored `logging` for caplog levels; tag name length test now checks flexible error copy and DB non-insert; card update 401 tests pop/restore `require_auth` on the same HTTP client (avoids `client_no_auth` clearing auth before setup).
+
+---
+
+### Entry 059 — 2026-05-02
+**Section:** Tests (`test_email_service`, `test_views`; audit follow-up)
+
+**Persona:** test.generate
+
+**Prompt:** Based on this audit, make the required changes
+
+**What was generated:** Added `tests/test_email_service.py` (provider selection for Resend, SMTP success/failure, dev vs non-dev fallback) and new view-route tests called out in the audit: unauthorised `PUT /cards/{id}`, `POST /tags` with overlong name (`#tag-error` + no DB insert), and malformed JSON / missing body on `PUT /tags/reorder`.
+
+---
+
+### Entry 058 — 2026-05-02
+**Section:** Test suite audit (`test.audit` persona)
+
+**Persona:** test.audit
+
+**Prompt:** Make an audit of this project
+
+**What was generated:** Structured audit of existing tests versus routes/services: coverage gaps, brittle assertions, isolation risks, and missing test categories.
+
+---
+
+### Entry 057 — 2026-05-02
+**Section:** Frontend review (HTMX, Tailwind, `main.js`)
+
+**Persona:** code.frontend.optimize
+
+**Prompt:** Can you check the front-end to make sure everything is optimized and that there is no unnecessary complexity
+
+**What was generated:** Frontend audit against the optimize persona (HTMX targets/swaps, indicators, template duplication, swipe/accordion behaviour). Fixed duplicate mobile swipe listeners: `initSwipeCardsIfNeeded` now runs on `htmx:afterSettle` only when the swap target is `#card-list`, so tag-tree (and other) swaps no longer stack `touchstart`/`touchmove`/`touchend` handlers on unchanged cards.
+
+---
+
+### Entry 056 — 2026-05-02
+**Section:** Tags / New tag modal, New & Edit card modals
+
+**Prompt:** Can you reflect the new tag order in the new tag modal dropdown and in the new and edit card modal
+
+**What was generated:** `get_valid_parent_tags()` now returns tags in the same depth-first tree order as the sidebar (`flatten_tag_tree_preorder` + `build_tag_tree`). Added `partials/tag_sync_oob.html` (sidebar + both modal tag lists); `PUT /tags/reorder` and `PUT /tags/{slug}/reparent` return that partial; `main.js` applies OOB fragments via `applyTagSyncFragments` after those requests. `tag_form.html` includes the shared OOB partial so POST/DELETE tag flows stay consistent.
+
+**Modifications I made:** The dropdown was not showing the tags in the correct order, I had to ask the agent to fix it
+
+---
+
+### Entry 055 — 2026-05-02
+**Section:** Tags / Sidebar drag-and-drop
+
+**Prompt:** When reordering tags, add the option to move a tag outside its parent, or move a tag on another tag so the moved tag become a children
+
+**What was generated:** Extended reorder mode with a top “drop here for top-level tag” target (uses `PUT /tags/{slug}/reparent` with `null` parent), center-of-row drops to nest under another tag (with `data-accepts-children` on the tree), tighter nest vs reorder hit zones, and `reparent_tag` now assigns `order` via `_next_order_among_siblings` when the parent changes. Updated `tag_tree.html`, `index.html` styles, and `main.js`.
+
+---
+
 ### Entry 054 — 2026-05-02
 **Section:** Tags / Sidebar
 

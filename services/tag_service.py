@@ -60,19 +60,31 @@ async def delete_empty_tags() -> int:
     return deleted
 
 
+def flatten_tag_tree_preorder(tree: list[dict]) -> list[Tag]:
+    """Depth-first preorder of tag nodes (matches sidebar / modal checkbox order)."""
+    out: list[Tag] = []
+    for node in tree:
+        out.append(node["tag"])
+        out.extend(flatten_tag_tree_preorder(node["children"]))
+    return out
+
+
 async def get_valid_parent_tags() -> list[Tag]:
     """Return tags that may be used as parents (root and level-1 tags only).
 
     Level-2 tags cannot be parents because that would create a disallowed
     third level. A tag is level-2 when its own parent is itself a child tag.
+    Order matches the tag tree (``order`` field within each group).
     """
     all_tags = await Tag.find_all().to_list()
     child_slugs = {tag.slug for tag in all_tags if tag.parent_slug is not None}
-    return [
-        tag
+    valid_slugs = {
+        tag.slug
         for tag in all_tags
         if tag.parent_slug is None or tag.parent_slug not in child_slugs
-    ]
+    }
+    tree = build_tag_tree(all_tags)
+    return [t for t in flatten_tag_tree_preorder(tree) if t.slug in valid_slugs]
 
 
 def build_tag_tree(tags: list[Tag], counts: dict[str, int] | None = None) -> list[dict]:
@@ -104,6 +116,19 @@ def build_tag_tree(tags: list[Tag], counts: dict[str, int] | None = None) -> lis
     return roots
 
 
+async def _next_order_among_siblings(
+    parent_slug: str | None,
+    exclude_slug: str,
+) -> int:
+    """Largest order among tags in the group plus one (append at end)."""
+    if parent_slug is None:
+        siblings = await Tag.find(Tag.parent_slug == None).to_list()
+    else:
+        siblings = await Tag.find(Tag.parent_slug == parent_slug).to_list()
+    others = [t for t in siblings if t.slug != exclude_slug]
+    return max((t.order for t in others), default=-1) + 1
+
+
 async def reparent_tag(slug: str, new_parent_slug: str | None) -> None:
     """Move a tag to a new parent, or promote it to root if new_parent_slug is None.
 
@@ -123,6 +148,7 @@ async def reparent_tag(slug: str, new_parent_slug: str | None) -> None:
 
     if new_parent_slug is None:
         tag.parent_slug = None
+        tag.order = await _next_order_among_siblings(None, slug)
         await tag.save()
         return
 
@@ -148,6 +174,7 @@ async def reparent_tag(slug: str, new_parent_slug: str | None) -> None:
         )
 
     tag.parent_slug = new_parent_slug
+    tag.order = await _next_order_among_siblings(new_parent_slug, slug)
     await tag.save()
 
 

@@ -111,10 +111,11 @@ async def reparent_tag(
     tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(tags, counts)
+    valid_parent_tags = await tag_service.get_valid_parent_tags()
     return templates.TemplateResponse(
         request,
-        "partials/tag_tree.html",
-        {"tag_tree": tag_tree},
+        "partials/tag_sync_oob.html",
+        {"tag_tree": tag_tree, "tags": valid_parent_tags},
     )
 
 
@@ -124,13 +125,14 @@ async def reorder_tags(
     _email: Annotated[str, Depends(require_auth)],
     body: ReorderRequest,
 ) -> HTMLResponse:
-    """Persist a new display order for a group of tags; return the refreshed tag tree."""
+    """Persist a new display order for a group of tags; refresh tree and modal tag lists."""
     await tag_service.reorder_tags(body.slugs, body.parent_slug)
     tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(tags, counts)
+    valid_parent_tags = await tag_service.get_valid_parent_tags()
     return templates.TemplateResponse(
         request,
-        "partials/tag_tree.html",
-        {"tag_tree": tag_tree},
+        "partials/tag_sync_oob.html",
+        {"tag_tree": tag_tree, "tags": valid_parent_tags},
     )
