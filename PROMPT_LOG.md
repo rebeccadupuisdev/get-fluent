@@ -37,6 +37,17 @@ Entry template:
 
 ---
 
+### Entry 050 — 2026-05-02
+**Section:** Static assets / cache busting
+
+**Prompt:** I have a bug in prod but I don't see the bug locally — the translation doesn't show in the edit modal when I want to edit. Could it be a JavaScript cache problem?
+
+**What was generated:** Added automatic MD5 content-hash cache busting for `main.js`. The hash is computed once at app startup in `views/deps.py` and exposed as a Jinja2 global (`static_js_hash`); the script tag in `index.html` now appends `?v={{ static_js_hash }}` so the browser fetches a fresh file whenever the script changes.
+
+**What I learned:** Had to understand the bug myself, the agent was not able to find it
+
+---
+
 ### Entry 049 — 2026-05-02
 **Section:** models/card.py, services/card_service.py, views/card_views.py, frontend/
 
