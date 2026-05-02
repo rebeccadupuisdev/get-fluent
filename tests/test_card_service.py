@@ -112,6 +112,18 @@ async def test_get_cards_tag_filter_matches_ancestor():
     assert by_parent[0].phrase == "¿Cómo estás?"
 
 
+async def test_search_cards_accent_insensitive():
+    """Unaccented query matches phrases with accents on the same base letters."""
+    await create_card(phrase="¿y tú?", tag_slugs=[])
+    await create_card(phrase="sin tilde tu", tag_slugs=[])
+
+    matching_accent = await search_cards("tu")
+    assert len(matching_accent) == 2
+    phrases = {r.phrase for r in matching_accent}
+    assert "¿y tú?" in phrases
+    assert "sin tilde tu" in phrases
+
+
 async def test_search_cards_case_insensitive():
     await create_card(phrase="Buenos días", tag_slugs=[])
     await create_card(phrase="Buenas noches", tag_slugs=[])

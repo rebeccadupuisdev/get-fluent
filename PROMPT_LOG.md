@@ -37,6 +37,15 @@ Entry template:
 
 ---
 
+### Entry 069 — 2026-05-02
+**Section:** Accent-insensitive card search (`services/card_service.py`, `tests/test_card_service.py`)
+
+**Prompt:** Can you change the search so that if I write a lettre without an accent, it still matches with the letter with an accent? Example: searching "tu" would show words with "tu" or "tú"
+
+**What was generated:** Updated search pattern generation to be accent-insensitive while preserving literal search behavior and case-insensitive matching in Mongo regex queries. Added a regression test to confirm an unaccented query (e.g. `tu`) matches both accented and unaccented phrases.
+
+---
+
 ### Entry 068 — 2026-05-02
 **Section:** Card search — `services/card_service.py`, `frontend/templates/partials/search_bar.html`, tests
 

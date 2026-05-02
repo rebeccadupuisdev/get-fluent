@@ -1,9 +1,69 @@
 import re
+import unicodedata
+from collections import defaultdict
 
 from pydantic import ValidationError
 
 from models.card import Card
 from models.tag import Tag
+
+# Maps NFD base letter (lowercase) -> regex character class matching any letter with that base (accents ignored).
+_LETTER_VARIANT_CLASS: dict[str, str] | None = None
+
+
+def _ensure_letter_variant_classes() -> dict[str, str]:
+    """Build once: all Unicode letters grouped by first NFD codepoint (lower), as regex char classes."""
+    global _LETTER_VARIANT_CLASS
+    if _LETTER_VARIANT_CLASS is not None:
+        return _LETTER_VARIANT_CLASS
+
+    base_to_chars: defaultdict[str, set[str]] = defaultdict(set)
+
+    for code in range(0x110000):
+        try:
+            ch = chr(code)
+        except ValueError:
+            break
+        if unicodedata.category(ch)[0] != "L":
+            continue
+        nfd = unicodedata.normalize("NFD", ch)
+        if not nfd:
+            continue
+        base_key = nfd[0].lower()
+        base_to_chars[base_key].add(ch)
+
+    classes: dict[str, str] = {}
+    for base_key, chars in base_to_chars.items():
+        escaped: list[str] = []
+        for c in sorted(chars):
+            if c in r"\]-^":
+                escaped.append("\\" + c)
+            elif c == "-":
+                escaped.append(r"\-")
+            else:
+                escaped.append(c)
+        classes[base_key] = "[" + "".join(escaped) + "]"
+
+    _LETTER_VARIANT_CLASS = classes
+    return classes
+
+
+def _accent_insensitive_regex_pattern(query: str) -> str:
+    """Literal substring match against NFC text; letters match any accented variant (case handled by regex i flag)."""
+    query = unicodedata.normalize("NFC", query)
+    classes = _ensure_letter_variant_classes()
+    parts: list[str] = []
+    for ch in query:
+        if ch.isalpha():
+            nfd = unicodedata.normalize("NFD", ch)
+            base_key = nfd[0].lower()
+            fragment = classes.get(base_key)
+            if fragment is None:
+                fragment = re.escape(ch)
+            parts.append(fragment)
+        else:
+            parts.append(re.escape(ch))
+    return "".join(parts)
 
 
 async def _collect_ancestor_slugs(slug: str) -> list[str]:
@@ -57,12 +117,12 @@ async def get_cards(tag_slug: str | None = None) -> list[Card]:
 
 
 async def search_cards(query: str, tag_slug: str | None = None) -> list[Card]:
-    """Return cards whose phrase or translation matches query (case-insensitive), newest-first.
+    """Return cards whose phrase or translation matches query (case- and accent-insensitive), newest-first.
 
     If tag_slug is provided, results are further restricted to cards assigned to that tag.
     """
-    escaped = re.escape(query)
-    regex = {"$regex": escaped, "$options": "i"}
+    pattern = _accent_insensitive_regex_pattern(query)
+    regex = {"$regex": pattern, "$options": "i"}
     filters: dict = {"$or": [{"phrase": regex}, {"translation": regex}]}
     if tag_slug:
         filters["tag_slugs"] = {"$in": [tag_slug]}
