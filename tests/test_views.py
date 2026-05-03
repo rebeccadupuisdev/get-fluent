@@ -1214,23 +1214,24 @@ async def test_request_magic_link_rate_limited():
     from auth.limiter import limiter
 
     limiter.reset()
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-    ) as ac:
-        r = await ac.get("/auth/login")
-        r.raise_for_status()
-        csrf = ac.cookies.get("csrftoken")
-        if csrf:
-            ac.headers["X-CSRF-Token"] = csrf
-        for _ in range(5):
+    with patch("auth.views.send_magic_link_email", return_value=True):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+        ) as ac:
+            r = await ac.get("/auth/login")
+            r.raise_for_status()
+            csrf = ac.cookies.get("csrftoken")
+            if csrf:
+                ac.headers["X-CSRF-Token"] = csrf
+            for _ in range(5):
+                resp = await ac.post(
+                    "/auth/request-magic-link",
+                    data={"email": "test@example.com"},
+                )
+                assert resp.status_code == 200
             resp = await ac.post(
                 "/auth/request-magic-link",
                 data={"email": "test@example.com"},
             )
-            assert resp.status_code == 200
-        resp = await ac.post(
-            "/auth/request-magic-link",
-            data={"email": "test@example.com"},
-        )
     assert resp.status_code == 429

@@ -37,6 +37,26 @@ Entry template:
 
 ---
 
+### Entry 071 — 2026-05-02
+**Section:** `tests/test_views.py` — Resend / magic link
+
+**Prompt:** Well I have multiple emails in my Resend account with test@example.com, so it must be the tests
+
+**What was generated:** Identified `test_request_magic_link_rate_limited` as posting five whitelisted magic-link requests without mocking `send_magic_link_email`, which invoked real Resend when `RESEND_API_KEY` was set. Wrapped that test in `patch("auth.views.send_magic_link_email", return_value=True)` like the other request-magic-link tests.
+
+---
+
+### Entry 070 — 2026-05-02
+**Section:** Testing / email (`tests/test_email_service.py`, Resend)
+
+**Prompt:** Do the test need to use Resend? Because I have a limit of 100 emails per day, and I'm already at 80%
+
+**What was generated:** Clarified that pytest does not consume Resend quota: Resend paths are covered with `unittest.mock.patch` on `resend.Emails.send`, autouse env isolation clears `RESEND_API_KEY`, and view tests patch `send_magic_link_email`. Real sends come from the running app with a live API key, not from the test suite.
+
+**Follow-up (Entry 071):** One view test (`test_request_magic_link_rate_limited`) did not patch the sender; fixed.
+
+---
+
 ### Entry 069 — 2026-05-02
 **Section:** Accent-insensitive card search (`services/card_service.py`, `tests/test_card_service.py`)
 
