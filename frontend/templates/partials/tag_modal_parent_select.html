@@ -1,5 +1,8 @@
-{# Parent dropdown for New Tag modal. OOB id lets reorder/reparent refresh options without a full page reload. #}
-<div id="tag-modal-parent-select" hx-swap-oob="true" class="relative">
+{# Parent dropdown for New Tag modal. Pass oob=true only in tag_sync_oob — if hx-swap-oob is set on
+   the copy inside #modal-form-content, HTMX strips it from the main swap and the dropdown vanishes.
+   The tags list must be passed in: imported macros do not see the outer template context in Jinja2. #}
+{% macro tag_modal_parent_select(tags, oob=false) %}
+<div id="tag-modal-parent-select" {% if oob %}hx-swap-oob="true"{% endif %} class="relative">
   <select name="parent_slug"
           id="parent-select"
           onchange="updateParentHint(this)"
@@ -19,3 +22,4 @@
     </svg>
   </div>
 </div>
+{% endmacro %}

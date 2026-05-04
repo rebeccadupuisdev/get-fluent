@@ -44,7 +44,8 @@
           Parent Tag
           <span class="text-stone-700 normal-case tracking-normal font-mono">(optional)</span>
         </label>
-        {% include "partials/tag_modal_parent_select.html" %}
+        {% from "partials/tag_modal_parent_select.html" import tag_modal_parent_select %}
+        {{ tag_modal_parent_select(tags) }}
         <p id="parent-hint" class="hidden mt-2 font-mono text-xs text-stone-600">
           This tag will appear nested under
           <span id="parent-hint-name" class="text-teal-600"></span>

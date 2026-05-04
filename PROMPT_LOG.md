@@ -37,6 +37,24 @@ Entry template:
 
 ---
 
+### Entry 073 — 2026-05-03
+**Section:** New Tag modal parent dropdown — `tag_modal_parent_select.html`, `tag_sync_oob.html`, `tag_modal_form.html`
+
+**Prompt:** Now it doesn't disappear, but it's not populated by the tags anymore
+
+**What was generated:** Updated the `tag_modal_parent_select` macro to take `tags` as an explicit argument and passed `tags` at both call sites. Macros imported with `{% from … import %}` do not receive the outer render context in Jinja2, so `{% for tag in tags %}` inside the macro saw an empty/undefined list.
+
+---
+
+### Entry 072 — 2026-05-03
+**Section:** New Tag modal — `frontend/templates/partials/tag_modal_parent_select.html`, `tag_sync_oob.html`, `tag_modal_form.html`
+
+**Prompt:** There's a bug, when we add a tag, the parent dropdown disappears and we can't add another one
+
+**What was generated:** Explained that HTMX strips `hx-swap-oob` nodes from the primary swap target; the parent dropdown partial was included inside `#modal-form-content` with OOB enabled, so after POST `/tags` the swapped form lost the select. Converted the markup to a Jinja macro `tag_modal_parent_select(oob=…)` so only the standalone fragment in `tag_sync_oob.html` uses `hx-swap-oob`; the inline modal copy does not.
+
+---
+
 ### Entry 071 — 2026-05-02
 **Section:** `tests/test_views.py` — Resend / magic link
 
