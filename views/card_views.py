@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import ValidationError
 
@@ -10,6 +10,22 @@ from services import abair_service, audio_service, card_service, tag_service
 from views.deps import templates, with_csrf
 
 router = APIRouter()
+
+
+def _normalize_filter_str(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+async def _cards_for_view(q: str | None, tag_slug: str | None):
+    """Same filtering rules as GET /cards (search + optional tag)."""
+    qn = _normalize_filter_str(q)
+    tag_n = _normalize_filter_str(tag_slug)
+    if qn:
+        return await card_service.search_cards(qn, tag_slug=tag_n)
+    return await card_service.get_cards(tag_slug=tag_n)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -132,6 +148,8 @@ async def update_card(
     audio: Annotated[UploadFile | None, File()] = None,
     remove_audio: Annotated[str, Form()] = "false",
     synthesised_audio_filename: Annotated[str, Form()] = "",
+    q: Annotated[str | None, Form()] = None,
+    tag_slug: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """Update a card's phrase, tags, and audio; return the refreshed card list."""
     existing = await card_service.get_card(card_id)
@@ -166,19 +184,22 @@ async def update_card(
     except ValueError as exc:
         raise HTTPException(422, str(exc))
 
-    cards = await card_service.get_cards()
+    cards = await _cards_for_view(q, tag_slug)
+    total_cards = len(await card_service.get_cards())
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    q_ctx = _normalize_filter_str(q)
+    tag_ctx = _normalize_filter_str(tag_slug)
     return templates.TemplateResponse(
         request,
         "partials/card_list_with_tags.html",
         {
             "cards": cards,
-            "q": None,
-            "tag_slug": None,
+            "q": q_ctx,
+            "tag_slug": tag_ctx,
             "tag_tree": tag_tree,
-            "total_cards": len(cards),
+            "total_cards": total_cards,
             "user_email": _email,
         },
     )
@@ -190,22 +211,27 @@ async def bulk_update_card_tags(
     _email: Annotated[str, Depends(require_auth)],
     card_ids: Annotated[list[str], Form()] = [],
     tag_slugs: Annotated[list[str], Form()] = [],
+    q: Annotated[str | None, Form()] = None,
+    tag_slug: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """Replace tags for all selected cards and return the refreshed card list + tags."""
     await card_service.bulk_update_card_tags(card_ids=card_ids, tag_slugs=tag_slugs)
-    cards = await card_service.get_cards()
+    cards = await _cards_for_view(q, tag_slug)
+    total_cards = len(await card_service.get_cards())
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    q_ctx = _normalize_filter_str(q)
+    tag_ctx = _normalize_filter_str(tag_slug)
     return templates.TemplateResponse(
         request,
         "partials/card_list_with_tags.html",
         {
             "cards": cards,
-            "q": None,
-            "tag_slug": None,
+            "q": q_ctx,
+            "tag_slug": tag_ctx,
             "tag_tree": tag_tree,
-            "total_cards": len(cards),
+            "total_cards": total_cards,
             "user_email": _email,
         },
     )
@@ -215,6 +241,8 @@ async def bulk_update_card_tags(
 async def bulk_delete_cards(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
+    q: Annotated[str | None, Form()] = None,
+    tag_slug: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """Delete selected cards and their associated audio, then refresh cards + tags."""
     form = await request.form()
@@ -224,19 +252,22 @@ async def bulk_delete_cards(
     audio_filenames = await card_service.bulk_delete_cards(card_ids=card_ids)
     for audio_filename in audio_filenames:
         await audio_service.delete_audio(audio_filename)
-    cards = await card_service.get_cards()
+    cards = await _cards_for_view(q, tag_slug)
+    total_cards = len(await card_service.get_cards())
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    q_ctx = _normalize_filter_str(q)
+    tag_ctx = _normalize_filter_str(tag_slug)
     return templates.TemplateResponse(
         request,
         "partials/card_list_with_tags.html",
         {
             "cards": cards,
-            "q": None,
-            "tag_slug": None,
+            "q": q_ctx,
+            "tag_slug": tag_ctx,
             "tag_tree": tag_tree,
-            "total_cards": len(cards),
+            "total_cards": total_cards,
             "user_email": _email,
         },
     )
@@ -246,9 +277,13 @@ async def bulk_delete_cards(
 async def bulk_delete_cards_post(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
+    q: Annotated[str | None, Form()] = None,
+    tag_slug: Annotated[str | None, Form()] = None,
 ) -> HTMLResponse:
     """HTMX-friendly alias for bulk deletion using POST form submission."""
-    return await bulk_delete_cards(request=request, _email=_email)
+    return await bulk_delete_cards(
+        request=request, _email=_email, q=q, tag_slug=tag_slug
+    )
 
 
 @router.delete("/cards/{card_id}", response_class=HTMLResponse)
@@ -256,24 +291,29 @@ async def delete_card(
     request: Request,
     _email: Annotated[str, Depends(require_auth)],
     card_id: str,
+    q: Annotated[str | None, Query()] = None,
+    tag_slug: Annotated[str | None, Query()] = None,
 ) -> HTMLResponse:
     """Delete a card and its associated audio, then return the updated card list."""
     audio_filename = await card_service.delete_card(card_id)
     if audio_filename:
         await audio_service.delete_audio(audio_filename)
-    cards = await card_service.get_cards()
+    cards = await _cards_for_view(q, tag_slug)
+    total_cards = len(await card_service.get_cards())
     all_tags = await tag_service.get_all_tags()
     counts = await card_service.get_card_counts_by_tag()
     tag_tree = tag_service.build_tag_tree(all_tags, counts)
+    q_ctx = _normalize_filter_str(q)
+    tag_ctx = _normalize_filter_str(tag_slug)
     return templates.TemplateResponse(
         request,
         "partials/card_list_with_tags.html",
         {
             "cards": cards,
-            "q": None,
-            "tag_slug": None,
+            "q": q_ctx,
+            "tag_slug": tag_ctx,
             "tag_tree": tag_tree,
-            "total_cards": len(cards),
+            "total_cards": total_cards,
             "user_email": _email,
         },
     )

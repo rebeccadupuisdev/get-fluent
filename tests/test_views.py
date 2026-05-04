@@ -603,6 +603,67 @@ async def test_update_card_whitespace_only_phrase_returns_422(client):
     assert response.status_code == 422
 
 
+async def test_update_card_response_respects_list_filter_tag_slug(client):
+    """List-context tag_slug (sidebar filter) limits the returned card list fragment."""
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})
+    await client.post("/cards", data={"phrase": "Hello"})
+    card = await Card.find_one(Card.phrase == "Bonjour")
+    assert card is not None
+
+    response = await client.put(
+        f"/cards/{card.id}",
+        data={
+            "phrase": "Salut",
+            "tag_slugs": "french",
+            "tag_slug": "french",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Salut" in response.text
+    assert "Hello" not in response.text
+
+
+async def test_update_card_response_respects_list_filter_q_and_tag_slug(client):
+    """List-context q + tag_slug match GET /cards AND logic for the returned fragment."""
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})
+    await client.post("/cards", data={"phrase": "Salut", "tag_slugs": "french"})
+    card = await Card.find_one(Card.phrase == "Bonjour")
+
+    response = await client.put(
+        f"/cards/{card.id}",
+        data={
+            "phrase": "Bienvenue",
+            "tag_slugs": "french",
+            "tag_slug": "french",
+            "q": "bien",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Bienvenue" in response.text
+    assert "Salut" not in response.text
+
+
+async def test_delete_card_response_respects_list_filter_tag_slug(client):
+    """DELETE may pass tag_slug as query param so the list fragment stays filtered."""
+    await client.post("/tags", data={"name": "French"})
+    await client.post("/cards", data={"phrase": "Bonjour", "tag_slugs": "french"})
+    await client.post("/cards", data={"phrase": "Hello"})
+    card = await Card.find_one(Card.phrase == "Bonjour")
+    assert card is not None
+
+    response = await client.delete(
+        f"/cards/{card.id}",
+        params={"tag_slug": "french"},
+    )
+
+    assert response.status_code == 200
+    assert "Hello" not in response.text
+
+
 # ---------------------------------------------------------------------------
 # PUT /cards/bulk/tags
 # ---------------------------------------------------------------------------

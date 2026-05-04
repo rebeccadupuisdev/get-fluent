@@ -405,10 +405,23 @@ function hideEditDeleteConfirm() {
   document.getElementById('edit-delete-confirm').classList.add('hidden');
 }
 
+function listContextQuerySuffix() {
+  const params = new URLSearchParams();
+  const tagEl = document.getElementById('active-tag-slug');
+  const searchEl = document.getElementById('search-input');
+  if (tagEl && tagEl.value) params.set('tag_slug', tagEl.value);
+  if (searchEl && searchEl.value) params.set('q', searchEl.value);
+  const s = params.toString();
+  return s ? '?' + s : '';
+}
+
 function confirmEditDelete() {
   const id = _editCardId;
   closeEditModal();
-  htmx.ajax('DELETE', '/cards/' + id, { target: '#card-list', swap: 'outerHTML' });
+  htmx.ajax('DELETE', '/cards/' + id + listContextQuerySuffix(), {
+    target: '#card-list',
+    swap: 'outerHTML',
+  });
 }
 
 // ── Bulk tag edit (multi-card selection) ─────────────────
@@ -584,6 +597,22 @@ window.openBulkDeleteCardsModal = openBulkDeleteCardsModal;
 window.closeBulkDeleteCardsModal = closeBulkDeleteCardsModal;
 
 // ── Sidebar — tag filter + breadcrumb ───────────────────
+/** Resolve the sidebar tag button whose hx-get filters by the given slug (leaf/parent row). */
+function findTagFilterButtonForSlug(slug) {
+  if (!slug) return null;
+  const buttons = document.querySelectorAll('.tag-filter-btn:not(#btn-all-cards)');
+  for (const btn of buttons) {
+    const hxGet = btn.getAttribute('hx-get') || '';
+    try {
+      const u = new URL(hxGet, window.location.origin);
+      if (u.searchParams.get('tag_slug') === slug) return btn;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 function setActiveTag(el) {
   document.querySelectorAll('.tag-filter-btn').forEach((b) => b.classList.remove('is-active'));
   el.classList.add('is-active');
@@ -687,12 +716,19 @@ document.addEventListener('htmx:afterSwap', function (evt) {
   }
 });
 
-// After any HTMX settle, check if the active tag was removed (e.g. by deleting empty tags).
-// If no filter button is active, fall back to "All Cards".
+// After HTMX settle: restore sidebar highlight when the tag tree was OOB-swapped (new nodes have
+// no .is-active). Use #active-tag-slug — do not trigger "All cards" unless the slug is gone from
+// the tree (deleted tag) or we truly have no selection.
 document.addEventListener('htmx:afterSettle', function () {
   updateResultBadge();
   const anyActive = document.querySelector('.tag-filter-btn.is-active');
   if (!anyActive) {
+    const slug = document.getElementById('active-tag-slug')?.value?.trim() ?? '';
+    const tagBtn = findTagFilterButtonForSlug(slug);
+    if (slug && tagBtn) {
+      setActiveTag(tagBtn);
+      return;
+    }
     const allCardsBtn = document.getElementById('btn-all-cards');
     if (allCardsBtn) {
       htmx.trigger(allCardsBtn, 'click');

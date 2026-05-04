@@ -32,7 +32,7 @@
           hx-target="#card-list"
           hx-swap="outerHTML"
           hx-indicator="#htmx-indicator"
-          hx-include="#bulk-delete-selected-card-ids"
+          hx-include="#bulk-delete-selected-card-ids, #active-tag-slug, #search-input"
           hx-on::after-request="if(event.detail.successful){ closeBulkDeleteCardsModal(); endBulkSelectMode(); }">
       <div class="px-7 py-4 border-t border-stone-700/60 flex items-center justify-end gap-2">
         <button type="button"

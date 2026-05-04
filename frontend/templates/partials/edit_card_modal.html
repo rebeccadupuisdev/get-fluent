@@ -16,6 +16,7 @@
           hx-target="#card-list"
           hx-swap="outerHTML"
           hx-encoding="multipart/form-data"
+          hx-include="#active-tag-slug, #search-input"
           hx-indicator="#htmx-indicator"
           hx-disabled-elt="find button[type='submit']"
           hx-on::after-request="if(event.detail.successful){ closeEditModal(); }">

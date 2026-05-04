@@ -37,6 +37,24 @@ Entry template:
 
 ---
 
+### Entry 075 — 2026-05-03
+**Section:** Frontend HTMX + tests — `main.js`, `tests/test_views.py`
+
+**Prompt:** Well it's not working, still reverting to all cards, can you fix this and add tests for this feature
+
+**What was generated:** Fixed `htmx:afterSettle` so it no longer fires `htmx.trigger` on “All cards” whenever `.tag-filter-btn.is-active` is missing after an OOB `#tag-tree` swap (that path cleared `#active-tag-slug` and reloaded an unfiltered list). Added `findTagFilterButtonForSlug` and, when `#active-tag-slug` still matches a sidebar row, call `setActiveTag` only (no extra GET). Added view tests for `PUT`/`DELETE` responses honoring list-context `tag_slug` / `q`.
+
+---
+
+### Entry 074 — 2026-05-03
+**Section:** Card list + HTMX — `card_views.py`, `edit_card_modal.html`, `bulk_edit_tags_modal.html`, `bulk_delete_cards_modal.html`, `main.js`
+
+**Prompt:** Can you change this behavior: When we filter by tags, or do a search, and then modify a card, we should keep the filtered view after the card is modified
+
+**What was generated:** Introduced shared `_cards_for_view` / `_normalize_filter_str` helpers so list refresh uses the same rules as `GET /cards`. `PUT /cards/{id}`, bulk tag/delete endpoints accept optional `q` and `tag_slug` (Form or Query for single-card delete); templates use `hx-include` on edit/bulk forms for `#active-tag-slug` and `#search-input`; `confirmEditDelete` appends the same params to the DELETE URL. Sidebar `total_cards` uses the global deck count while the list respects the active filters.
+
+---
+
 ### Entry 073 — 2026-05-03
 **Section:** New Tag modal parent dropdown — `tag_modal_parent_select.html`, `tag_sync_oob.html`, `tag_modal_form.html`
 
